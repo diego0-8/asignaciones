@@ -8,7 +8,7 @@ require_once 'models/UsuarioModel.php';
 
 class AdminController {
     private $usuarioModel;
-    
+
     public function __construct() {
         $this->usuarioModel = new UsuarioModel();
     }
@@ -73,10 +73,10 @@ class AdminController {
                 );
                 
                 $this->jsonResponse(['success' => true, 'message' => 'Usuario creado exitosamente']);
-            } else {
+                    } else {
                 $this->jsonResponse(['success' => false, 'message' => 'Error al crear el usuario']);
-            }
-        } else {
+                    }
+                } else {
             $this->jsonResponse(['success' => false, 'message' => implode(', ', $errors)]);
         }
     }
@@ -212,7 +212,7 @@ class AdminController {
         if (!isset($_SESSION['user_id']) || $_SESSION['user_role'] !== 'administrador') {
             $this->jsonResponse(['success' => false, 'message' => 'No autorizado'], 403);
         }
-        
+
         $page = $_GET['page'] ?? 1;
         $limit = $_GET['limit'] ?? 10;
         $search = $_GET['search'] ?? '';
@@ -261,23 +261,23 @@ class AdminController {
      * Validar datos de usuario
      */
     private function validarDatosUsuario($data) {
-        $errors = [];
-        
-        if (empty($data['nombre'])) $errors[] = 'El nombre es obligatorio.';
-        if (empty($data['cedula'])) $errors[] = 'La cédula es obligatoria.';
-        if (empty($data['usuario'])) $errors[] = 'El usuario es obligatorio.';
-        if (empty($data['contrasena'])) $errors[] = 'La contraseña es obligatoria.';
-        if (empty($data['rol'])) $errors[] = 'El rol es obligatorio.';
-        
-        if (empty($errors)) {
-            // Verificar cédula única
-            if (!$this->usuarioModel->verificarCedulaUnica($data['cedula'])) {
-                $errors[] = 'La cédula ya está registrada.';
-            }
-            
-            // Verificar usuario único
-            if (!$this->usuarioModel->verificarUsuarioUnico($data['usuario'])) {
-                $errors[] = 'El nombre de usuario ya está en uso.';
+            $errors = [];
+
+            if (empty($data['nombre'])) $errors[] = 'El nombre es obligatorio.';
+            if (empty($data['cedula'])) $errors[] = 'La cédula es obligatoria.';
+            if (empty($data['usuario'])) $errors[] = 'El usuario es obligatorio.';
+            if (empty($data['contrasena'])) $errors[] = 'La contraseña es obligatoria.';
+            if (empty($data['rol'])) $errors[] = 'El rol es obligatorio.';
+
+            if (empty($errors)) {
+                // Verificar cédula única
+                if (!$this->usuarioModel->verificarCedulaUnica($data['cedula'])) {
+                    $errors[] = 'La cédula ya está registrada.';
+                }
+
+                // Verificar usuario único
+                if (!$this->usuarioModel->verificarUsuarioUnico($data['usuario'])) {
+                    $errors[] = 'El nombre de usuario ya está en uso.';
             }
         }
         

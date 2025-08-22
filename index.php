@@ -111,6 +111,60 @@ switch ($action) {
         $controller->descargarArchivos();
         break;
         
+    case 'coordinador_procesar_archivo':
+        verificarSesion('coordinador');
+        $controller = new CoordinadorController();
+        $controller->procesarArchivo();
+        break;
+        
+    case 'coordinador_obtener_detalles_asesor':
+        verificarSesion('coordinador');
+        $controller = new CoordinadorController();
+        $controller->obtenerDetallesAsesor();
+        break;
+        
+    case 'coordinador_obtener_asesores_disponibles':
+        verificarSesion('coordinador');
+        $controller = new CoordinadorController();
+        $controller->obtenerAsesoresDisponibles();
+        break;
+        
+    case 'coordinador_transferir_cliente':
+        verificarSesion('coordinador');
+        $controller = new CoordinadorController();
+        $controller->transferirCliente();
+        break;
+        
+    case 'coordinador_cerrar_sesion':
+        verificarSesion('coordinador');
+        $controller = new CoordinadorController();
+        $controller->cerrarSesion();
+        break;
+        
+    case 'coordinador_obtener_detalles_asesor':
+        verificarSesion('coordinador');
+        $controller = new CoordinadorController();
+        $controller->obtenerDetallesAsesor();
+        break;
+        
+    case 'coordinador_obtener_asesores_disponibles':
+        verificarSesion('coordinador');
+        $controller = new CoordinadorController();
+        $controller->obtenerAsesoresDisponibles();
+        break;
+        
+    case 'coordinador_transferir_cliente':
+        verificarSesion('coordinador');
+        $controller = new CoordinadorController();
+        $controller->transferirCliente();
+        break;
+        
+    case 'coordinador_descargar_archivos':
+        verificarSesion('coordinador');
+        $controller = new CoordinadorController();
+        $controller->descargarArchivos();
+        break;
+        
     case 'coordinador_cerrar_sesion':
         $controller = new CoordinadorController();
         $controller->cerrarSesion();
@@ -139,6 +193,24 @@ switch ($action) {
         verificarSesion('asesor');
         $controller = new AsesorController();
         $controller->guardarGestion();
+        break;
+        
+    case 'asesor_obtener_detalles_gestion':
+        verificarSesion('asesor');
+        $controller = new AsesorController();
+        $controller->obtenerDetallesGestion();
+        break;
+        
+    case 'asesor_obtener_notificaciones':
+        verificarSesion('asesor');
+        $controller = new AsesorController();
+        $controller->obtenerNotificaciones();
+        break;
+        
+    case 'asesor_obtener_notificaciones_fecha':
+        verificarSesion('asesor');
+        $controller = new AsesorController();
+        $controller->obtenerNotificacionesPorFecha();
         break;
         
     case 'asesor_citas':

@@ -47,6 +47,12 @@
                     <p>Gestiona los clientes asignados a ti</p>
                 </div>
                 <div class="top-bar-right">
+                    <!-- Campanita de notificaciones -->
+                    <div class="notification-bell" id="notificationBell" onclick="mostrarNotificaciones()">
+                        <i class="fas fa-bell"></i>
+                        <span class="notification-badge" id="notificationBadge" style="display: none;">0</span>
+                    </div>
+                    
                     <div class="date-time">
                         <i class="fas fa-calendar"></i>
                         <span><?php echo date('d/m/Y'); ?></span>
@@ -151,51 +157,91 @@
                         <?php endforeach; ?>
                     </div>
 
-                    <!-- Paginación elegante -->
+                    <!-- Paginación elegante mejorada -->
                     <?php if ($total_pages > 1): ?>
                         <div class="pagination-elegant">
-                            <?php if ($page > 1): ?>
-                                <a href="?action=asesor_clientes&page=<?php echo $page - 1; ?>&search=<?php echo urlencode($search); ?>&estado_filter=<?php echo urlencode($estado_filter); ?>" class="page-link prev">
-                                    <i class="fas fa-chevron-left"></i>
-                                </a>
-                            <?php endif; ?>
+                            <!-- Información de páginas -->
+                            <div class="page-info">
+                                Página <?php echo $page; ?> de <?php echo $total_pages; ?> 
+                                (<?php echo $total_clientes; ?> clientes total)
+                            </div>
                             
-                            <?php
-                            // Calcular el rango de páginas a mostrar
-                            $start_page = max(1, $page - 2);
-                            $end_page = min($total_pages, $page + 2);
-                            
-                            // Mostrar primera página si no está en el rango
-                            if ($start_page > 1) {
-                                echo '<a href="?action=asesor_clientes&page=1&search=' . urlencode($search) . '&estado_filter=' . urlencode($estado_filter) . '" class="page-link">1</a>';
-                                if ($start_page > 2) {
-                                    echo '<span class="page-ellipsis">...</span>';
+                            <!-- Navegación de páginas -->
+                            <div class="page-navigation">
+                                <?php if ($page > 1): ?>
+                                    <a href="?action=asesor_clientes&page=1&search=<?php echo urlencode($search); ?>&estado_filter=<?php echo urlencode($estado_filter); ?>&tipificacion_filter=<?php echo urlencode($tipificacion_filter ?? ''); ?>" class="page-link first" title="Primera página">
+                                        <i class="fas fa-angle-double-left"></i>
+                                    </a>
+                                    <a href="?action=asesor_clientes&page=<?php echo $page - 1; ?>&search=<?php echo urlencode($search); ?>&estado_filter=<?php echo urlencode($estado_filter); ?>&tipificacion_filter=<?php echo urlencode($tipificacion_filter ?? ''); ?>" class="page-link prev" title="Página anterior">
+                                        <i class="fas fa-angle-left"></i>
+                                    </a>
+                                <?php endif; ?>
+                                
+                                <?php
+                                // Calcular el rango de páginas a mostrar (máximo 5 páginas)
+                                $range = 2;
+                                $start_page = max(1, $page - $range);
+                                $end_page = min($total_pages, $page + $range);
+                                
+                                // Ajustar el rango para mostrar siempre 5 páginas si es posible
+                                if ($end_page - $start_page < 4) {
+                                    if ($start_page == 1) {
+                                        $end_page = min($total_pages, $start_page + 4);
+                                    } elseif ($end_page == $total_pages) {
+                                        $start_page = max(1, $end_page - 4);
+                                    }
                                 }
-                            }
-                            
-                            // Mostrar páginas del rango
-                            for ($i = $start_page; $i <= $end_page; $i++) {
-                                $active_class = ($i == $page) ? 'active' : '';
-                                echo '<a href="?action=asesor_clientes&page=' . $i . '&search=' . urlencode($search) . '&estado_filter=' . urlencode($estado_filter) . '" class="page-link ' . $active_class . '">' . $i . '</a>';
-                            }
-                            
-                            // Mostrar última página si no está en el rango
-                            if ($end_page < $total_pages) {
-                                if ($end_page < $total_pages - 1) {
-                                    echo '<span class="page-ellipsis">...</span>';
+                                
+                                // Mostrar primera página si no está en el rango
+                                if ($start_page > 1) {
+                                    echo '<a href="?action=asesor_clientes&page=1&search=' . urlencode($search) . '&estado_filter=' . urlencode($estado_filter) . '&tipificacion_filter=' . urlencode($tipificacion_filter ?? '') . '" class="page-link">1</a>';
+                                    if ($start_page > 2) {
+                                        echo '<span class="page-ellipsis">...</span>';
+                                    }
                                 }
-                                echo '<a href="?action=asesor_clientes&page=' . $total_pages . '&search=' . urlencode($search) . '&estado_filter=' . urlencode($estado_filter) . '" class="page-link">' . $total_pages . '</a>';
-                            }
-                            ?>
-                            
-                            <?php if ($page < $total_pages): ?>
-                                <a href="?action=asesor_clientes&page=<?php echo $page + 1; ?>&search=<?php echo urlencode($search); ?>&estado_filter=<?php echo urlencode($estado_filter); ?>" class="page-link next">
-                                    <i class="fas fa-chevron-right"></i>
-                                </a>
-                            <?php endif; ?>
+                                
+                                // Mostrar páginas del rango
+                                for ($i = $start_page; $i <= $end_page; $i++) {
+                                    $active_class = ($i == $page) ? 'active' : '';
+                                    echo '<a href="?action=asesor_clientes&page=' . $i . '&search=' . urlencode($search) . '&estado_filter=' . urlencode($estado_filter) . '&tipificacion_filter=' . urlencode($tipificacion_filter ?? '') . '" class="page-link ' . $active_class . '">' . $i . '</a>';
+                                }
+                                
+                                // Mostrar última página si no está en el rango
+                                if ($end_page < $total_pages) {
+                                    if ($end_page < $total_pages - 1) {
+                                        echo '<span class="page-ellipsis">...</span>';
+                                    }
+                                    echo '<a href="?action=asesor_clientes&page=' . $total_pages . '&search=' . urlencode($search) . '&estado_filter=' . urlencode($estado_filter) . '&tipificacion_filter=' . urlencode($tipificacion_filter ?? '') . '" class="page-link">' . $total_pages . '</a>';
+                                }
+                                ?>
+                                
+                                <?php if ($page < $total_pages): ?>
+                                    <a href="?action=asesor_clientes&page=<?php echo $page + 1; ?>&search=<?php echo urlencode($search); ?>&estado_filter=<?php echo urlencode($estado_filter); ?>&tipificacion_filter=<?php echo urlencode($tipificacion_filter ?? ''); ?>" class="page-link next" title="Página siguiente">
+                                        <i class="fas fa-angle-right"></i>
+                                    </a>
+                                    <a href="?action=asesor_clientes&page=<?php echo $total_pages; ?>&search=<?php echo urlencode($search); ?>&estado_filter=<?php echo urlencode($estado_filter); ?>&tipificacion_filter=<?php echo urlencode($tipificacion_filter ?? ''); ?>" class="page-link last" title="Última página">
+                                        <i class="fas fa-angle-double-right"></i>
+                                    </a>
+                                <?php endif; ?>
+                            </div>
                         </div>
                     <?php endif; ?>
                 <?php endif; ?>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal de Notificaciones -->
+    <div id="notificationModal" class="modal-overlay" style="display: none;">
+        <div class="modal-content notification-modal">
+            <div class="modal-header">
+                <h3><i class="fas fa-phone"></i> Clientes para Llamar Hoy</h3>
+                <button class="modal-close" onclick="cerrarModalNotificaciones()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div id="notificationList">
+                    <!-- Las notificaciones se cargarán aquí dinámicamente -->
+                </div>
             </div>
         </div>
     </div>
@@ -222,6 +268,126 @@
         document.getElementById('search-cedula').addEventListener('keypress', function(e) {
             if (e.key === 'Enter') {
                 aplicarFiltros();
+            }
+        });
+
+        // Cargar notificaciones al cargar la página
+        document.addEventListener('DOMContentLoaded', function() {
+            cargarNotificaciones();
+        });
+
+        // Función para cargar notificaciones del día
+        function cargarNotificaciones() {
+            fetch('index.php?action=asesor_obtener_notificaciones')
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        actualizarBadgeNotificaciones(data.notificaciones.length);
+                        if (data.notificaciones.length > 0) {
+                            mostrarBadgeNotificaciones();
+                        }
+                    }
+                })
+                .catch(error => {
+                    console.error('Error al cargar notificaciones:', error);
+                });
+        }
+
+        // Función para mostrar el modal de notificaciones
+        function mostrarNotificaciones() {
+            fetch('index.php?action=asesor_obtener_notificaciones')
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        mostrarModalNotificaciones(data.notificaciones);
+                    }
+                })
+                .catch(error => {
+                    console.error('Error al cargar notificaciones:', error);
+                });
+        }
+
+        // Función para mostrar el modal con las notificaciones
+        function mostrarModalNotificaciones(notificaciones) {
+            const modal = document.getElementById('notificationModal');
+            const notificationList = document.getElementById('notificationList');
+            
+            if (notificaciones.length === 0) {
+                notificationList.innerHTML = '<p class="text-center text-muted">No hay clientes para llamar hoy</p>';
+            } else {
+                notificationList.innerHTML = notificaciones.map(notif => `
+                    <div class="notification-item" data-cliente-id="${notif.cliente_id}">
+                        <h4>${notif.nombre_completo}</h4>
+                        <p><strong>Cédula:</strong> ${notif.cedula} | <strong>Teléfono:</strong> ${notif.telefono}</p>
+                        <p><strong>Programado para:</strong> ${formatearFecha(notif.fecha_gestion)}</p>
+                        <p><strong>Estado:</strong> <span class="badge-volver-llamar">Volver a Llamar</span></p>
+                        <div class="notification-actions">
+                            <button class="btn-gestionar" onclick="gestionarClienteDesdeNotificacion(${notif.cliente_id})">
+                                <i class="fas fa-phone"></i> Gestionar
+                            </button>
+                        </div>
+                    </div>
+                `).join('');
+            }
+            
+            modal.style.display = 'flex';
+        }
+
+        // Función para formatear fecha
+        function formatearFecha(fechaString) {
+            const fecha = new Date(fechaString);
+            const hoy = new Date();
+            const manana = new Date(hoy);
+            manana.setDate(hoy.getDate() + 1);
+            
+            if (fecha.toDateString() === hoy.toDateString()) {
+                return 'Hoy - ' + fecha.toLocaleTimeString('es-ES', {hour: '2-digit', minute: '2-digit'});
+            } else if (fecha.toDateString() === manana.toDateString()) {
+                return 'Mañana - ' + fecha.toLocaleTimeString('es-ES', {hour: '2-digit', minute: '2-digit'});
+            } else {
+                return fecha.toLocaleDateString('es-ES', {
+                    weekday: 'long',
+                    year: 'numeric',
+                    month: 'long',
+                    day: 'numeric',
+                    hour: '2-digit',
+                    minute: '2-digit'
+                });
+                }
+            }
+
+        // Función para cerrar el modal de notificaciones
+        function cerrarModalNotificaciones() {
+            document.getElementById('notificationModal').style.display = 'none';
+        }
+
+        // Función para gestionar cliente desde notificaciones
+        function gestionarClienteDesdeNotificacion(clienteId) {
+            // Redirigir a la vista de gestión
+            window.location.href = 'index.php?action=asesor_gestionar_cliente&cliente_id=' + clienteId;
+        }
+
+        // Función para actualizar el badge de notificaciones
+        function actualizarBadgeNotificaciones(cantidad) {
+            const badge = document.getElementById('notificationBadge');
+            if (badge) {
+                badge.textContent = cantidad;
+                badge.style.display = cantidad > 0 ? 'flex' : 'none';
+            }
+        }
+
+        // Función para mostrar el badge de notificaciones
+        function mostrarBadgeNotificaciones() {
+            const badge = document.getElementById('notificationBadge');
+            if (badge) {
+                badge.style.display = 'flex';
+            }
+        }
+
+        // Cerrar modal al hacer clic fuera de él
+        document.getElementById('notificationModal').addEventListener('click', function(e) {
+            if (e.target === this) {
+                cerrarModalNotificaciones();
             }
         });
     </script>

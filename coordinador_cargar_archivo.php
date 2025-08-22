@@ -150,8 +150,516 @@
             }
         }
         
+        /* Estilos para la carga de archivos */
+        .upload-section {
+            padding: 20px;
+        }
+        
+        .upload-container {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+            margin-bottom: 30px;
+        }
+        
+        .upload-instructions-column,
+        .upload-form-column {
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+        }
+        
+        .instructions-card,
+        .upload-form-card {
+            padding: 25px;
+        }
+        
+        .instructions-header,
+        .upload-form-header {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 2px solid #e1e5e9;
+        }
+        
+        .instructions-header i,
+        .upload-form-header i {
+            font-size: 2rem;
+            color: #007bff;
+        }
+        
+        .instructions-header h2,
+        .upload-form-header h2 {
+            margin: 0;
+            color: #2c3e50;
+            font-size: 1.5rem;
+        }
+        
+        .instructions-content h3 {
+            color: #2c3e50;
+            margin: 20px 0 10px 0;
+            font-size: 1.2rem;
+        }
+        
+        .instructions-content ul {
+            margin: 15px 0;
+            padding-left: 20px;
+        }
+        
+        .instructions-content li {
+            margin: 8px 0;
+            color: #555;
+        }
+        
+        .format-example {
+            background: #f8f9fa;
+            border: 1px solid #e1e5e9;
+            border-radius: 8px;
+            padding: 15px;
+            margin: 15px 0;
+        }
+        
+        .format-example pre {
+            margin: 0;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9rem;
+            color: #495057;
+        }
+        
+        .important-note {
+            background: #fff3cd;
+            border: 1px solid #ffeaa7;
+            border-radius: 8px;
+            padding: 15px;
+            margin: 20px 0;
+            display: flex;
+            align-items: flex-start;
+            gap: 10px;
+        }
+        
+        .important-note i {
+            color: #856404;
+            font-size: 1.2rem;
+            margin-top: 2px;
+        }
+        
+        .important-note p {
+            margin: 0;
+            color: #856404;
+            font-size: 0.95rem;
+        }
+        
+        .base-info {
+            background: #d1ecf1;
+            border: 1px solid #bee5eb;
+            border-radius: 8px;
+            padding: 15px;
+            margin: 20px 0;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .base-info i {
+            color: #0c5460;
+            font-size: 1.2rem;
+        }
+        
+        .base-info p {
+            margin: 0;
+            color: #0c5460;
+            font-size: 0.95rem;
+        }
+        
+        .base-info small {
+            display: block;
+            margin-top: 5px;
+            color: #6c757d;
+            font-size: 0.85rem;
+        }
+        
+        .base-existente-info .info-card {
+            background: #e8f5e8;
+            border: 1px solid #28a745;
+            border-radius: 8px;
+            padding: 20px;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+        
+        .base-existente-info .info-card i {
+            font-size: 2rem;
+            color: #28a745;
+        }
+        
+        .base-existente-info .info-content h4 {
+            margin: 0 0 8px 0;
+            color: #155724;
+            font-size: 1.1rem;
+        }
+        
+        .base-existente-info .info-content p {
+            margin: 0 0 5px 0;
+            color: #155724;
+            font-size: 0.95rem;
+        }
+        
+        .base-existente-info .info-content small {
+            color: #6c757d;
+            font-size: 0.85rem;
+        }
+        
+        .upload-form {
+            margin-top: 20px;
+        }
+        
+        .form-group {
+            margin-bottom: 20px;
+        }
+        
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #2c3e50;
+        }
+        
+        .form-control {
+            width: 100%;
+            padding: 12px 15px;
+            border: 2px solid #e1e5e9;
+            border-radius: 8px;
+            font-size: 14px;
+            transition: border-color 0.3s ease;
+            box-sizing: border-box;
+        }
+        
+        .form-control:focus {
+            outline: none;
+            border-color: #007bff;
+            box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.1);
+        }
+        
+        .form-text {
+            display: block;
+            margin-top: 5px;
+            font-size: 0.85rem;
+            color: #6c757d;
+        }
+        
+        .form-actions {
+            display: flex;
+            gap: 15px;
+            margin-top: 25px;
+        }
+        
+        .btn {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .btn-primary {
+            background: #007bff;
+            color: white;
+        }
+        
+        .btn-primary:hover:not(:disabled) {
+            background: #0056b3;
+            transform: translateY(-2px);
+        }
+        
+        .btn-primary:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+        
+        .btn-secondary {
+            background: #6c757d;
+            color: white;
+        }
+        
+        .btn-secondary:hover {
+            background: #545b62;
+            transform: translateY(-2px);
+        }
+        
+
+        
+        .file-info {
+            margin-top: 10px;
+            padding: 15px;
+            background: #f8f9fa;
+            border: 1px solid #e1e5e9;
+            border-radius: 8px;
+        }
+        
+        .file-details {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+        
+        .file-details i {
+            font-size: 2rem;
+            color: #28a745;
+        }
+        
+        .file-text strong {
+            display: block;
+            color: #2c3e50;
+            font-size: 1rem;
+        }
+        
+        .file-text small {
+            color: #6c757d;
+            font-size: 0.85rem;
+        }
+        
+        .upload-progress {
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+            padding: 25px;
+            margin: 20px 0;
+        }
+        
+        .progress-header h3 {
+            margin: 0 0 20px 0;
+            color: #2c3e50;
+            text-align: center;
+        }
+        
+        .progress-bar {
+            width: 100%;
+            height: 20px;
+            background: #e1e5e9;
+            border-radius: 10px;
+            overflow: hidden;
+            margin-bottom: 15px;
+        }
+        
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #007bff, #0056b3);
+            width: 0%;
+            transition: width 0.3s ease;
+        }
+        
+        .progress-text {
+            text-align: center;
+            font-weight: 600;
+            color: #2c3e50;
+            font-size: 1.1rem;
+        }
+        
+        .upload-results {
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+            padding: 25px;
+            margin: 20px 0;
+        }
+        
+        .results-header h3 {
+            margin: 0 0 20px 0;
+            color: #2c3e50;
+            text-align: center;
+        }
+        
+        .results-success .result-header {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            margin-bottom: 25px;
+            padding-bottom: 20px;
+            border-bottom: 2px solid #e1e5e9;
+        }
+        
+        .results-success .result-header i {
+            font-size: 2.5rem;
+            color: #28a745;
+        }
+        
+        .results-success .result-header h4 {
+            margin: 0;
+            color: #28a745;
+            font-size: 1.8rem;
+        }
+        
+        .result-stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin-bottom: 25px;
+        }
+        
+        .result-errors {
+            margin: 25px 0;
+            padding: 20px;
+            background: #f8d7da;
+            border: 1px solid #f5c6cb;
+            border-radius: 8px;
+        }
+        
+        .result-errors h5 {
+            margin: 0 0 15px 0;
+            color: #721c24;
+        }
+        
+        .errors-list {
+            max-height: 200px;
+            overflow-y: auto;
+        }
+        
+        .error-item {
+            padding: 8px 0;
+            border-bottom: 1px solid #f5c6cb;
+            color: #721c24;
+            font-size: 0.9rem;
+        }
+        
+        .result-actions {
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+            margin-top: 25px;
+        }
+        
+        .alert-container {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 9999;
+            max-width: 400px;
+        }
+        
+        .alert {
+            margin-bottom: 10px;
+            padding: 15px;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            animation: slideInRight 0.3s ease-out;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .alert::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 4px;
+            height: 100%;
+            background: currentColor;
+            opacity: 0.3;
+        }
+        
+        .alert-success {
+            background: linear-gradient(135deg, #d4edda, #c3e6cb);
+            border: 1px solid #c3e6cb;
+            color: #155724;
+        }
+        
+        .alert-danger {
+            background: linear-gradient(135deg, #f8d7da, #f5c6cb);
+            border: 1px solid #f5c6cb;
+            color: #721c24;
+        }
+        
+        .alert-info {
+            background: linear-gradient(135deg, #d1ecf1, #bee5eb);
+            border: 1px solid #bee5eb;
+            color: #0c5460;
+        }
+        
+        .alert .close {
+            background: none;
+            border: none;
+            font-size: 20px;
+            cursor: pointer;
+            color: inherit;
+            opacity: 0.7;
+            transition: opacity 0.2s;
+            margin-left: 10px;
+            padding: 0;
+            width: 24px;
+            height: 24px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 50%;
+        }
+        
+        .alert .close:hover {
+            opacity: 1;
+            background: rgba(0,0,0,0.1);
+        }
+        
+        .alert-content {
+            flex: 1;
+            margin-right: 10px;
+        }
+        
+        .alert-title {
+            font-weight: 600;
+            margin-bottom: 5px;
+        }
+        
+        .alert-message {
+            font-size: 14px;
+            opacity: 0.9;
+        }
+        
+        @keyframes slideInRight {
+            from {
+                transform: translateX(100%);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+        
+        @keyframes slideOutRight {
+            from {
+                transform: translateX(0);
+                opacity: 1;
+            }
+            to {
+                transform: translateX(100%);
+                opacity: 0;
+            }
+        }
+        
+        .alert.removing {
+            animation: slideOutRight 0.3s ease-in forwards;
+        }
+        
         /* Responsive */
         @media (max-width: 768px) {
+            .upload-container {
+                grid-template-columns: 1fr;
+                gap: 20px;
+            }
+            
             .alert-success-large {
                 width: 95%;
                 left: 2.5%;
@@ -163,6 +671,15 @@
             }
             
             .form-actions-success {
+                flex-direction: column;
+                align-items: center;
+            }
+            
+            .form-actions {
+                flex-direction: column;
+            }
+            
+            .result-actions {
                 flex-direction: column;
                 align-items: center;
             }
@@ -232,17 +749,18 @@
                                 <h3>Formato Requerido:</h3>
                                 <ul>
                                     <li><strong>Archivo:</strong> Solo archivos CSV (.csv)</li>
-                                    <li><strong>Campos obligatorios:</strong> Cédula, Nombre Completo, Teléfono</li>
-                                    <li><strong>Campos opcionales:</strong> Celular 2, Email, Ciudad</li>
+                                    <li><strong>Campos obligatorios:</strong> Nombre, Cédula, Teléfono</li>
                                     <li><strong>Separador:</strong> Coma (,) entre campos</li>
                                     <li><strong>Codificación:</strong> UTF-8 recomendado</li>
+                                    <li><strong>Formato:</strong> Primera línea debe contener los nombres de las columnas</li>
                                 </ul>
 
                                 <h3>Ejemplo de formato CSV:</h3>
                                 <div class="format-example">
-                                    <pre>cedula,nombre_completo,telefono,celular2,email,ciudad
-12345678,Juan Pérez,3001234567,3009876543,juan@email.com,Bogotá
-87654321,María García,3001111111,3002222222,maria@email.com,Medellín</pre>
+                                    <pre>nombre,cedula,telefono
+Juan Pérez,12345678,3001234567
+María García,87654321,3001111111
+Carlos López,11223344,3003333333</pre>
                                 </div>
 
                                 <div class="important-note">
@@ -250,10 +768,18 @@
                                     <p><strong>Nota importante:</strong> El sistema verifica automáticamente que no haya cédulas duplicadas. Si es la primera carga, se creará una nueva base de datos con el nombre que proporciones. Si ya existe una base, se agregarán solo los clientes nuevos a la base existente.</p>
                                 </div>
                                 
+                                <?php if ($baseExistente): ?>
+                                <div class="base-info" id="baseInfo">
+                                    <i class="fas fa-database"></i>
+                                    <p><strong>Base actual:</strong> Base de datos activa con clientes existentes</p>
+                                    <small>Los nuevos clientes se complementarán con los existentes</small>
+                                </div>
+                                <?php else: ?>
                                 <div class="base-info" id="baseInfo" style="display: none;">
                                     <i class="fas fa-database"></i>
                                     <p><strong>Base actual:</strong> <span id="nombreBaseActual"></span></p>
                                 </div>
+                                <?php endif; ?>
                             </div>
                         </div>
                     </div>
@@ -267,17 +793,32 @@
                             </div>
 
                             <form id="uploadForm" enctype="multipart/form-data" class="upload-form">
+                                <?php if (!$baseExistente): ?>
+                                <!-- Campo de nombre solo para la primera carga -->
                                 <div class="form-group" id="nombreCargaGroup">
                                     <label for="nombre_carga">Nombre de la Carga:</label>
                                     <input type="text" id="nombre_carga" name="nombre_carga" 
-                                           placeholder="Ej: Base de datos Enero 2024" class="form-control">
+                                           placeholder="Ej: Base de datos Enero 2024" class="form-control" required>
                                     <small class="form-text">Identifica esta carga de clientes (solo para la primera carga)</small>
                                 </div>
+                                <?php else: ?>
+                                <!-- Información de la base existente -->
+                                <div class="form-group base-existente-info">
+                                    <div class="info-card">
+                                        <i class="fas fa-database"></i>
+                                        <div class="info-content">
+                                            <h4>Base de Datos Existente</h4>
+                                            <p>Los nuevos clientes se agregarán a tu base actual</p>
+                                            <small>No es necesario especificar un nombre para cargas adicionales</small>
+                                        </div>
+                                    </div>
+                                </div>
+                                <?php endif; ?>
                                 
                                 <div class="form-group">
                                     <label for="archivo_csv">Seleccionar Archivo CSV:</label>
-                                    <input type="file" id="archivo_csv" name="archivo_csv" accept=".csv" required class="form-control">
-                                    <small class="form-text">Solo archivos CSV hasta 5MB</small>
+                                    <input type="file" id="archivo_csv" name="archivo" accept=".csv" required class="form-control">
+                                    <small class="form-text">Solo archivos CSV hasta 500MB</small>
                                 </div>
                                 
                                 <div class="form-actions">
@@ -287,6 +828,7 @@
                                     <button type="reset" class="btn btn-secondary">
                                         <i class="fas fa-undo"></i> Limpiar
                                     </button>
+
                                 </div>
                             </form>
                         </div>
@@ -318,7 +860,10 @@
     </div>
 
     <!-- Alert Container -->
-    <div id="alertContainer" class="alert-container"></div>
+    <!-- Alertas de carga -->
+    <div id="alertContainer" class="alert-container">
+        <!-- Las alertas se insertarán aquí dinámicamente -->
+    </div>
 
     <script src="assets/js/coordinador-cargar-archivo.js"></script>
 </body>

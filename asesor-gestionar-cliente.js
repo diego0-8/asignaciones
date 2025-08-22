@@ -6,6 +6,8 @@
 // Variables globales
 let currentClienteId = null;
 let currentAsesorId = null;
+let isSubmitting = false; // Prevenir doble envío
+let submitToken = null; // Token único por envío
 
 // Inicialización cuando se carga la página
 document.addEventListener('DOMContentLoaded', function() {
@@ -236,6 +238,12 @@ function procesarGestion(event) {
     console.log('🔍 Procesando gestión del cliente...');
     console.log('📝 Evento:', event);
     
+    // PREVENIR DOBLE ENVÍO
+    if (isSubmitting) {
+        console.log('⚠️ Formulario ya se está enviando, ignorando clic adicional');
+        return false;
+    }
+    
     // Validar formulario
     if (!validarFormulario()) {
         console.log('❌ Validación falló');
@@ -243,6 +251,12 @@ function procesarGestion(event) {
     }
     
     console.log('✅ Validación exitosa, mostrando indicador de carga...');
+    
+    // Marcar como enviando
+    isSubmitting = true;
+    
+    // Generar token único para este envío
+    submitToken = Date.now() + '_' + Math.random().toString(36).substr(2, 9);
     
     // Mostrar indicador de carga
     mostrarCargando();
@@ -253,8 +267,10 @@ function procesarGestion(event) {
     // Agregar datos adicionales
     formData.append('asesor_id', getAsesorId());
     formData.append('fecha_gestion', new Date().toISOString());
+    formData.append('submit_token', submitToken); // Token único
     
     console.log('📤 Enviando datos:', Object.fromEntries(formData));
+    console.log('🔒 Token de envío:', submitToken);
     
     // Enviar datos al servidor
     enviarGestion(formData);
@@ -267,6 +283,14 @@ function procesarGestion(event) {
  */
 function enviarGestion(formData) {
     console.log('Enviando gestión al servidor...');
+    
+    // Verificar que el token sea válido
+    if (!submitToken) {
+        console.error('❌ Token de envío no válido');
+        mostrarError('Error interno: Token de envío no válido');
+        resetSubmitState();
+        return;
+    }
     
     fetch('index.php?action=asesor_guardar_gestion', {
         method: 'POST',
@@ -301,6 +325,8 @@ function enviarGestion(formData) {
     })
     .finally(() => {
         ocultarCargando();
+        // Resetear estado de envío
+        resetSubmitState();
     });
 }
 
@@ -395,6 +421,10 @@ function mostrarCargando() {
     if (btnSubmit) {
         btnSubmit.disabled = true;
         btnSubmit.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Guardando...';
+        btnSubmit.classList.add('btn-disabled');
+        
+        // Agregar tooltip de prevención
+        btnSubmit.title = 'Formulario en proceso de envío. Por favor espera...';
     }
 }
 
@@ -406,6 +436,263 @@ function ocultarCargando() {
     if (btnSubmit) {
         btnSubmit.disabled = false;
         btnSubmit.innerHTML = '<i class="fas fa-save"></i> Guardar Gestión';
+        btnSubmit.classList.remove('btn-disabled');
+        btnSubmit.title = 'Guardar la gestión del cliente';
+    }
+}
+
+/**
+ * Resetear estado de envío
+ */
+function resetSubmitState() {
+    isSubmitting = false;
+    submitToken = null;
+    console.log('🔄 Estado de envío reseteado');
+}
+
+/**
+ * Mostrar detalles de una gestión específica
+ */
+function mostrarDetallesGestion(gestionId, tipoGestion) {
+    console.log('🔍 Mostrando detalles de gestión:', gestionId, tipoGestion);
+    
+    // Mostrar modal
+    const modal = document.getElementById('detallesModal');
+    const modalTitle = document.getElementById('detallesTitle');
+    const modalContent = document.getElementById('detallesContent');
+    
+    if (!modal || !modalTitle || !modalContent) {
+        console.error('❌ Elementos del modal no encontrados');
+        return;
+    }
+    
+    // Configurar título según el tipo
+    if (tipoGestion === 'asignacion_cita') {
+        modalTitle.textContent = '📅 Detalles de Cita Asignada';
+    } else if (tipoGestion === 'volver_llamar') {
+        modalTitle.textContent = '📞 Detalles de Volver a Llamar';
+    } else {
+        modalTitle.textContent = '📋 Detalles de la Gestión';
+    }
+    
+    // Mostrar indicador de carga
+    modalContent.innerHTML = '<div class="loading"><i class="fas fa-spinner fa-spin"></i> Cargando detalles...</div>';
+    modal.style.display = 'block';
+    
+    // Cargar detalles desde el servidor
+    cargarDetallesGestion(gestionId, tipoGestion);
+}
+
+/**
+ * Cargar detalles de gestión desde el servidor
+ */
+function cargarDetallesGestion(gestionId, tipoGestion) {
+    console.log('📡 Cargando detalles de gestión ID:', gestionId);
+    
+    const formData = new FormData();
+    formData.append('gestion_id', gestionId);
+    formData.append('tipo_gestion', tipoGestion);
+    
+    fetch('index.php?action=asesor_obtener_detalles_gestion', {
+        method: 'POST',
+        body: formData
+    })
+    .then(response => {
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
+        return response.json();
+    })
+    .then(data => {
+        console.log('Detalles recibidos:', data);
+        
+        if (data.success) {
+            mostrarDetallesEnModal(data.detalles, tipoGestion);
+        } else {
+            mostrarErrorDetalles(data.error || 'Error al cargar detalles');
+        }
+    })
+    .catch(error => {
+        console.error('Error al cargar detalles:', error);
+        mostrarErrorDetalles('Error de conexión: ' + error.message);
+    });
+}
+
+/**
+ * Mostrar detalles en el modal
+ */
+function mostrarDetallesEnModal(detalles, tipoGestion) {
+    const modalContent = document.getElementById('detallesContent');
+    
+    let html = '';
+    
+    if (tipoGestion === 'asignacion_cita') {
+        html = generarHTMLDetallesCita(detalles);
+    } else if (tipoGestion === 'volver_llamar') {
+        html = generarHTMLDetallesVolverLlamar(detalles);
+    } else {
+        html = generarHTMLDetallesGenericos(detalles);
+    }
+    
+    modalContent.innerHTML = html;
+}
+
+/**
+ * Generar HTML para detalles de cita
+ */
+function generarHTMLDetallesCita(detalles) {
+    return `
+        <div class="detalles-gestion detalles-cita">
+            <h4><i class="fas fa-calendar-check"></i> Cita Programada</h4>
+            
+            <div class="detalle-item">
+                <span class="detalle-label">Cliente:</span>
+                <span class="detalle-value">${detalles.cliente_nombre || 'N/A'}</span>
+            </div>
+            
+            <div class="detalle-item">
+                <span class="detalle-label">Asesor:</span>
+                <span class="detalle-value">${detalles.asesor_nombre || 'N/A'}</span>
+            </div>
+            
+            <div class="detalle-item">
+                <span class="detalle-label">Fecha de Cita:</span>
+                <span class="detalle-value">${detalles.fecha_cita || 'N/A'}</span>
+            </div>
+            
+            <div class="detalle-item">
+                <span class="detalle-label">Hora de Cita:</span>
+                <span class="detalle-value">${detalles.hora_cita || 'N/A'}</span>
+            </div>
+            
+            <div class="detalle-item">
+                <span class="detalle-label">Lugar:</span>
+                <span class="detalle-value">${detalles.lugar_cita || 'N/A'}</span>
+            </div>
+            
+            <div class="detalle-item">
+                <span class="detalle-label">Estado:</span>
+                <span class="detalle-value">
+                    <span class="badge badge-success">Programada</span>
+                </span>
+            </div>
+            
+            <div class="detalle-item">
+                <span class="detalle-label">Observaciones:</span>
+                <span class="detalle-value">${detalles.observaciones || 'Sin observaciones'}</span>
+            </div>
+            
+            <div class="detalle-item">
+                <span class="detalle-label">Fecha de Gestión:</span>
+                <span class="detalle-value">${detalles.fecha_gestion || 'N/A'}</span>
+            </div>
+        </div>
+    `;
+}
+
+/**
+ * Generar HTML para detalles de volver a llamar
+ */
+function generarHTMLDetallesVolverLlamar(detalles) {
+    return `
+        <div class="detalles-gestion detalles-volver-llamar">
+            <h4><i class="fas fa-phone-volume"></i> Programado para Nueva Llamada</h4>
+            
+            <div class="detalle-item">
+                <span class="detalle-label">Cliente:</span>
+                <span class="detalle-value">${detalles.cliente_nombre || 'N/A'}</span>
+            </div>
+            
+            <div class="detalle-item">
+                <span class="detalle-label">Asesor:</span>
+                <span class="detalle-value">${detalles.asesor_nombre || 'N/A'}</span>
+            </div>
+            
+            <div class="detalle-item">
+                <span class="detalle-label">Fecha Programada:</span>
+                <span class="detalle-value">${detalles.fecha_proximo_contacto || 'N/A'}</span>
+            </div>
+            
+            <div class="detalle-item">
+                <span class="detalle-label">Hora Programada:</span>
+                <span class="detalle-value">${detalles.hora_proximo_contacto || 'N/A'}</span>
+            </div>
+            
+            <div class="detalle-item">
+                <span class="detalle-label">Observaciones:</span>
+                <span class="detalle-value">${detalles.observaciones || 'Sin observaciones'}</span>
+            </div>
+            
+            <div class="detalle-item">
+                <span class="detalle-label">Fecha de Gestión:</span>
+                <span class="detalle-value">${detalles.fecha_gestion || 'N/A'}</span>
+            </div>
+        </div>
+    `;
+}
+
+/**
+ * Generar HTML para detalles genéricos
+ */
+function generarHTMLDetallesGenericos(detalles) {
+    return `
+        <div class="detalles-gestion">
+            <h4><i class="fas fa-info-circle"></i> Detalles de la Gestión</h4>
+            
+            <div class="detalle-item">
+                <span class="detalle-label">Cliente:</span>
+                <span class="detalle-value">${detalles.cliente_nombre || 'N/A'}</span>
+            </div>
+            
+            <div class="detalle-item">
+                <span class="detalle-label">Asesor:</span>
+                <span class="detalle-value">${detalles.asesor_nombre || 'N/A'}</span>
+            </div>
+            
+            <div class="detalle-item">
+                <span class="detalle-label">Tipo de Contacto:</span>
+                <span class="detalle-value">${detalles.tipo_contacto || 'N/A'}</span>
+            </div>
+            
+            <div class="detalle-item">
+                <span class="detalle-label">Resultado:</span>
+                <span class="detalle-value">${detalles.tipo_gestion || 'N/A'}</span>
+            </div>
+            
+            <div class="detalle-item">
+                <span class="detalle-label">Observaciones:</span>
+                <span class="detalle-value">${detalles.observaciones || 'Sin observaciones'}</span>
+            </div>
+            
+            <div class="detalle-item">
+                <span class="detalle-label">Fecha de Gestión:</span>
+                <span class="detalle-value">${detalles.fecha_gestion || 'N/A'}</span>
+            </div>
+        </div>
+    `;
+}
+
+/**
+ * Mostrar error en detalles
+ */
+function mostrarErrorDetalles(mensaje) {
+    const modalContent = document.getElementById('detallesContent');
+    modalContent.innerHTML = `
+        <div class="error-message">
+            <i class="fas fa-exclamation-triangle" style="color: #dc3545; font-size: 2em; margin-bottom: 15px;"></i>
+            <h4>Error al cargar detalles</h4>
+            <p>${mensaje}</p>
+        </div>
+    `;
+}
+
+/**
+ * Cerrar modal de detalles
+ */
+function cerrarDetallesModal() {
+    const modal = document.getElementById('detallesModal');
+    if (modal) {
+        modal.style.display = 'none';
     }
 }
 

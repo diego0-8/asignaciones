@@ -268,6 +268,16 @@
                                     <p><strong>Observaciones:</strong> <?php echo htmlspecialchars($gestion['observaciones']); ?></p>
                                     <p><strong>Asesor:</strong> <?php echo htmlspecialchars($gestion['asesor_nombre'] ?? 'N/A'); ?></p>
                                 </div>
+                                
+                                <!-- Botón de detalles solo para gestiones específicas -->
+                                <?php if (in_array($gestion['tipo_gestion'], ['asignacion_cita', 'volver_llamar'])): ?>
+                                    <div class="history-actions">
+                                        <button type="button" class="btn-details" onclick="mostrarDetallesGestion(<?php echo $gestion['id']; ?>, '<?php echo $gestion['tipo_gestion']; ?>')">
+                                            <i class="fas fa-eye"></i>
+                                            Ver Detalles
+                                        </button>
+                                    </div>
+                                <?php endif; ?>
                             </div>
                         </div>
                     <?php endforeach; ?>
@@ -297,6 +307,24 @@
             </div>
             <div class="modal-footer">
                 <button class="btn-primary" onclick="cerrarModal()">Aceptar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal de detalles de gestión -->
+    <div id="detallesModal" class="modal" style="display: none;">
+        <div class="modal-content modal-large">
+            <div class="modal-header">
+                <h3 id="detallesTitle">Detalles de la Gestión</h3>
+                <span class="close" onclick="cerrarDetallesModal()">&times;</span>
+            </div>
+            <div class="modal-body">
+                <div id="detallesContent">
+                    <!-- El contenido se cargará dinámicamente -->
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn-secondary" onclick="cerrarDetallesModal()">Cerrar</button>
             </div>
         </div>
     </div>

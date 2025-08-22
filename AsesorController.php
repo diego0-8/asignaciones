@@ -48,7 +48,7 @@ class AsesorController {
         $tipificacion_filter = isset($_GET['tipificacion_filter']) ? $_GET['tipificacion_filter'] : '';
         
         // Configurar paginación
-        $per_page = 10;
+        $per_page = 5; // Mostrar solo 5 clientes por página
         $offset = ($page - 1) * $per_page;
         
         // Construir consulta base
@@ -169,7 +169,7 @@ class AsesorController {
         $estado_filter = isset($_GET['estado_filter']) ? $_GET['estado_filter'] : '';
         
         // Configurar paginación
-        $per_page = 10;
+        $per_page = 5; // Mostrar solo 5 citas por página
         $offset = ($page - 1) * $per_page;
         
         // Construir consulta base
@@ -292,6 +292,7 @@ class AsesorController {
         $tipoContacto = $_POST['tipo_contacto'] ?? null;
         $tipoGestion = $_POST['tipo_gestion'] ?? null;
         $observaciones = $_POST['observaciones'] ?? null;
+        $submitToken = $_POST['submit_token'] ?? null;
         
         error_log("Datos recibidos:");
         error_log("- Asesor ID: " . $asesorId);
@@ -299,11 +300,35 @@ class AsesorController {
         error_log("- Tipo Contacto: " . $tipoContacto);
         error_log("- Tipo Gestión: " . $tipoGestion);
         error_log("- Observaciones: " . $observaciones);
+        error_log("- Submit Token: " . $submitToken);
         
         // Validar datos requeridos
         if (!$clienteId || !$tipoContacto || !$observaciones) {
             error_log("Error: Datos incompletos");
             $this->jsonResponse(['success' => false, 'error' => 'Datos incompletos'], 400);
+            return;
+        }
+        
+        // PREVENCIÓN DE DUPLICADOS - Verificar si ya existe una gestión similar reciente
+        error_log("Verificando duplicados...");
+        $sql = "SELECT id FROM historial_gestion 
+                WHERE cliente_id = ? AND asesor_id = ? AND tipo_contacto = ? 
+                AND tipo_gestion = ? AND observaciones = ? 
+                AND fecha_gestion >= DATE_SUB(NOW(), INTERVAL 5 MINUTE)
+                ORDER BY fecha_gestion DESC 
+                LIMIT 1";
+        
+        $paramsDuplicado = [$clienteId, $asesorId, $tipoContacto, $tipoGestion, $observaciones];
+        $duplicado = $this->db->fetch($sql, $paramsDuplicado);
+        
+        if ($duplicado) {
+            error_log("⚠️ DUPLICADO DETECTADO - ID: " . $duplicado['id']);
+            error_log("Se encontró una gestión similar en los últimos 5 minutos");
+            $this->jsonResponse([
+                'success' => false, 
+                'error' => 'Esta gestión ya fue registrada recientemente. Evitando duplicado.',
+                'duplicate_id' => $duplicado['id']
+            ], 409); // Conflict - Duplicado
             return;
         }
         
@@ -324,8 +349,8 @@ class AsesorController {
             // Insertar en historial_gestion
             $sql = "INSERT INTO historial_gestion (
                         cliente_id, asesor_id, tipo_contacto, tipo_gestion, 
-                        observaciones, fecha_gestion, resultado
-                    ) VALUES (?, ?, ?, ?, ?, NOW(), ?)";
+                        observaciones, resultado
+                    ) VALUES (?, ?, ?, ?, ?, ?)";
             
             $resultado = $tipoGestion ?: $tipoContacto;
             $params = [$clienteId, $asesorId, $tipoContacto, $tipoGestion, $observaciones, $resultado];
@@ -347,6 +372,11 @@ class AsesorController {
                 $fechaCita = $_POST['fecha_cita'] ?? null;
                 $horaCita = $_POST['hora_cita'] ?? null;
                 $lugarCita = $_POST['lugar_cita'] ?? null;
+                
+                // Validar que todos los campos de cita estén presentes
+                if (!$fechaCita || !$horaCita || !$lugarCita) {
+                    throw new Exception("Para asignar una cita, todos los campos (fecha, hora y lugar) son obligatorios");
+                }
                 
                 if ($fechaCita && $horaCita && $lugarCita) {
                     $sql = "INSERT INTO citas (
@@ -374,6 +404,11 @@ class AsesorController {
                 $fechaProximo = $_POST['fecha_proximo_contacto'] ?? null;
                 $horaProximo = $_POST['hora_proximo_contacto'] ?? null;
                 
+                // Validar que todos los campos de volver a llamar estén presentes
+                if (!$fechaProximo || !$horaProximo) {
+                    throw new Exception("Para marcar volver a llamar, fecha y hora son obligatorios");
+                }
+                
                 if ($fechaProximo && $horaProximo) {
                     $sql = "UPDATE clientes SET 
                                 estado_gestion = 'En Proceso',
@@ -396,6 +431,11 @@ class AsesorController {
             error_log("Confirmando transacción...");
             $this->db->commit();
             
+            // ACTUALIZAR ESTADO DEL CLIENTE A 'GESTIONADO'
+            $sql = "UPDATE clientes SET estado_gestion = 'gestionado' WHERE id = ?";
+            $this->db->query($sql, [$clienteId]);
+            error_log("Estado del cliente actualizado a 'gestionado'");
+            
             $mensaje = "Gestión guardada correctamente";
             if ($tipoGestion === 'asignacion_cita') {
                 $mensaje .= ". Cita programada exitosamente.";
@@ -407,7 +447,8 @@ class AsesorController {
             $this->jsonResponse([
                 'success' => true,
                 'message' => $mensaje,
-                'gestion_id' => $gestionId
+                'gestion_id' => $gestionId,
+                'submit_token' => $submitToken // Devolver el token para confirmación
             ]);
             
         } catch (Exception $e) {
@@ -427,6 +468,218 @@ class AsesorController {
         header('Content-Type: application/json');
         echo json_encode($data);
         exit;
+    }
+    
+    /**
+     * Obtener detalles de una gestión específica
+     */
+    public function obtenerDetallesGestion() {
+        // Log para debugging
+        error_log("=== INICIO obtenerDetallesGestion ===");
+        error_log("POST data: " . print_r($_POST, true));
+        
+        // Verificar sesión
+        if (!isset($_SESSION) || !isset($_SESSION['user_id']) || !isset($_SESSION['user_role'])) {
+            error_log("Error: Sesión no válida");
+            $this->jsonResponse(['success' => false, 'error' => 'Sesión no válida'], 401);
+            return;
+        }
+        
+        if ($_SESSION['user_role'] !== 'asesor') {
+            error_log("Error: Usuario no es asesor");
+            $this->jsonResponse(['success' => false, 'error' => 'No autorizado'], 401);
+            return;
+        }
+        
+        $asesorId = $_SESSION['user_id'];
+        $gestionId = $_POST['gestion_id'] ?? null;
+        $tipoGestion = $_POST['tipo_gestion'] ?? null;
+        
+        if (!$gestionId || !$tipoGestion) {
+            $this->jsonResponse(['success' => false, 'error' => 'Datos incompletos'], 400);
+            return;
+        }
+        
+        try {
+            // Obtener detalles de la gestión
+            $sql = "SELECT hg.*, c.nombre_completo as cliente_nombre, u.nombre_completo as asesor_nombre
+                    FROM historial_gestion hg
+                    INNER JOIN clientes c ON hg.cliente_id = c.id
+                    INNER JOIN usuarios u ON hg.asesor_id = u.id
+                    WHERE hg.id = ? AND hg.asesor_id = ?";
+            
+            $gestion = $this->db->fetch($sql, [$gestionId, $asesorId]);
+            
+            if (!$gestion) {
+                $this->jsonResponse(['success' => false, 'error' => 'Gestión no encontrada'], 404);
+                return;
+            }
+            
+            $detalles = $gestion;
+            
+            // Obtener detalles adicionales según el tipo de gestión
+            if ($tipoGestion === 'asignacion_cita') {
+                // Buscar detalles de la cita
+                $sql = "SELECT * FROM citas WHERE cliente_id = ? AND asesor_id = ? ORDER BY fecha_creacion DESC LIMIT 1";
+                $cita = $this->db->fetch($sql, [$gestion['cliente_id'], $asesorId]);
+                
+                if ($cita) {
+                    $detalles['fecha_cita'] = date('d/m/Y', strtotime($cita['fecha_cita']));
+                    $detalles['hora_cita'] = date('H:i', strtotime($cita['hora_cita']));
+                    $detalles['lugar_cita'] = $cita['lugar_cita'];
+                }
+                
+            } elseif ($tipoGestion === 'volver_llamar') {
+                // Buscar detalles de próxima fecha
+                $sql = "SELECT proxima_fecha FROM clientes WHERE id = ?";
+                $cliente = $this->db->fetch($sql, [$gestion['cliente_id']]);
+                
+                if ($cliente && $cliente['proxima_fecha']) {
+                    $fechaHora = new DateTime($cliente['proxima_fecha']);
+                    $detalles['fecha_proximo_contacto'] = $fechaHora->format('d/m/Y');
+                    $detalles['hora_proximo_contacto'] = $fechaHora->format('H:i');
+                }
+            }
+            
+            // Formatear fecha de gestión
+            $detalles['fecha_gestion'] = date('d/m/Y H:i', strtotime($gestion['fecha_gestion']));
+            
+            error_log("Detalles obtenidos exitosamente para gestión ID: " . $gestionId);
+            
+            $this->jsonResponse([
+                'success' => true,
+                'detalles' => $detalles
+            ]);
+            
+        } catch (Exception $e) {
+            error_log("Error en obtenerDetallesGestion: " . $e->getMessage());
+            $this->jsonResponse(['success' => false, 'error' => 'Error interno del servidor'], 500);
+        }
+    }
+
+    /**
+     * Obtener notificaciones del día para el asesor
+     * Solo clientes con tipificación "volver_llamar" para la fecha específica
+     */
+    public function obtenerNotificaciones() {
+        // Verificar sesión
+        if (!isset($_SESSION['user_id']) || $_SESSION['user_role'] !== 'asesor') {
+            $this->jsonResponse(['success' => false, 'error' => 'No autorizado'], 401);
+            return;
+        }
+        
+        $asesorId = $_SESSION['user_id'];
+        $hoy = date('Y-m-d');
+        
+        try {
+            // Obtener SOLO clientes con tipificación "volver_llamar" para hoy
+            // y que NO hayan sido gestionados después de esa tipificación
+            $sql = "SELECT DISTINCT 
+                        c.id as cliente_id,
+                        c.nombre_completo,
+                        c.cedula,
+                        c.telefono,
+                        hg.tipo_gestion,
+                        hg.fecha_gestion,
+                        hg.proxima_fecha,
+                        'Volver a Llamar' as tipificacion_nombre
+                    FROM clientes c
+                    INNER JOIN historial_gestion hg ON c.id = hg.cliente_id
+                    WHERE c.asesor_id = ? 
+                    AND hg.tipo_gestion = 'volver_llamar'
+                    AND DATE(hg.fecha_gestion) = ?
+                    AND hg.id = (
+                        -- Obtener la gestión más reciente de este cliente
+                        SELECT MAX(hg2.id)
+                        FROM historial_gestion hg2
+                        WHERE hg2.cliente_id = c.id
+                        AND hg2.asesor_id = ?
+                    )
+                    AND NOT EXISTS (
+                        -- Verificar que no haya gestiones posteriores que cambien la tipificación
+                        SELECT 1
+                        FROM historial_gestion hg3
+                        WHERE hg3.cliente_id = c.id
+                        AND hg3.asesor_id = ?
+                        AND hg3.fecha_gestion > hg.fecha_gestion
+                        AND hg3.tipo_gestion != 'volver_llamar'
+                    )
+                    ORDER BY hg.fecha_gestion DESC";
+            
+            $notificaciones = $this->db->fetchAll($sql, [$asesorId, $hoy, $asesorId, $asesorId]);
+            
+            $this->jsonResponse([
+                'success' => true,
+                'notificaciones' => $notificaciones
+            ]);
+            
+        } catch (Exception $e) {
+            error_log("Error en obtenerNotificaciones: " . $e->getMessage());
+            $this->jsonResponse(['success' => false, 'error' => 'Error interno del servidor'], 500);
+        }
+    }
+
+    /**
+     * Obtener notificaciones de una fecha específica para el asesor
+     * Útil para mostrar notificaciones futuras programadas
+     */
+    public function obtenerNotificacionesPorFecha() {
+        // Verificar sesión
+        if (!isset($_SESSION['user_id']) || $_SESSION['user_role'] !== 'asesor') {
+            $this->jsonResponse(['success' => false, 'error' => 'No autorizado'], 401);
+            return;
+        }
+        
+        $asesorId = $_SESSION['user_id'];
+        $fecha = $_GET['fecha'] ?? date('Y-m-d');
+        
+        try {
+            // Obtener clientes con tipificación "volver_llamar" para la fecha específica
+            $sql = "SELECT DISTINCT 
+                        c.id as cliente_id,
+                        c.nombre_completo,
+                        c.cedula,
+                        c.telefono,
+                        hg.tipo_gestion,
+                        hg.fecha_gestion,
+                        hg.proxima_fecha,
+                        'Volver a Llamar' as tipificacion_nombre,
+                        DATE(hg.fecha_gestion) as fecha_programada
+                    FROM clientes c
+                    INNER JOIN historial_gestion hg ON c.id = hg.cliente_id
+                    WHERE c.asesor_id = ? 
+                    AND hg.tipo_gestion = 'volver_llamar'
+                    AND DATE(hg.fecha_gestion) = ?
+                    AND hg.id = (
+                        -- Obtener la gestión más reciente de este cliente
+                        SELECT MAX(hg2.id)
+                        FROM historial_gestion hg2
+                        WHERE hg2.cliente_id = c.id
+                        AND hg2.asesor_id = ?
+                    )
+                    AND NOT EXISTS (
+                        -- Verificar que no haya gestiones posteriores que cambien la tipificación
+                        SELECT 1
+                        FROM historial_gestion hg3
+                        WHERE hg3.cliente_id = c.id
+                        AND hg3.asesor_id = ?
+                        AND hg3.fecha_gestion > hg.fecha_gestion
+                        AND hg3.tipo_gestion != 'volver_llamar'
+                    )
+                    ORDER BY hg.fecha_gestion DESC";
+            
+            $notificaciones = $this->db->fetchAll($sql, [$asesorId, $fecha, $asesorId, $asesorId]);
+            
+            $this->jsonResponse([
+                'success' => true,
+                'notificaciones' => $notificaciones,
+                'fecha_consultada' => $fecha
+            ]);
+            
+        } catch (Exception $e) {
+            error_log("Error en obtenerNotificacionesPorFecha: " . $e->getMessage());
+            $this->jsonResponse(['success' => false, 'error' => 'Error interno del servidor'], 500);
+        }
     }
 }
 ?>
