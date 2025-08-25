@@ -33,6 +33,34 @@ class AdminController {
     }
     
     /**
+     * Vista de usuarios
+     */
+    public function usuarios() {
+        // Verificar autorización
+        if (!isset($_SESSION['user_id']) || $_SESSION['user_role'] !== 'administrador') {
+            header('Location: index.php?action=login');
+            exit;
+        }
+        
+        // Incluir vista
+        include 'views/admin_usuarios.php';
+    }
+    
+    /**
+     * Vista de asignaciones
+     */
+    public function asignaciones() {
+        // Verificar autorización
+        if (!isset($_SESSION['user_id']) || $_SESSION['user_role'] !== 'administrador') {
+            header('Location: index.php?action=login');
+            exit;
+        }
+        
+        // Incluir vista
+        include 'views/admin_asignar_asesores.php';
+    }
+    
+    /**
      * Crear usuario (AJAX)
      */
     public function createUsuario() {

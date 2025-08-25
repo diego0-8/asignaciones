@@ -63,9 +63,23 @@ class AsesorController {
             $params[] = $search_param;
         }
         
+        // Filtro por estado de gestión (gestionado o no gestionado)
         if (!empty($estado_filter)) {
-            $where_conditions[] = "estado_gestion = ?";
-            $params[] = $estado_filter;
+            if ($estado_filter === 'gestionado') {
+                // Clientes que han sido gestionados (tienen historial de gestión)
+                $where_conditions[] = "id IN (
+                    SELECT DISTINCT cliente_id 
+                    FROM historial_gestion 
+                    WHERE cliente_id = clientes.id
+                )";
+            } elseif ($estado_filter === 'no_gestionado') {
+                // Clientes que NO han sido gestionados (no tienen historial de gestión)
+                $where_conditions[] = "id NOT IN (
+                    SELECT DISTINCT cliente_id 
+                    FROM historial_gestion 
+                    WHERE cliente_id = clientes.id
+                )";
+            }
         }
         
         // Filtro por tipificación (última gestión del cliente)
@@ -73,11 +87,9 @@ class AsesorController {
             $where_conditions[] = "id IN (
                 SELECT DISTINCT hg.cliente_id 
                 FROM historial_gestion hg 
-                WHERE hg.tipo_gestion = ? OR 
-                      (hg.tipo_contacto = 'no_contactado' AND ? = 'no_contactado')
+                WHERE hg.tipo_gestion = ? 
                 ORDER BY hg.fecha_gestion DESC
             )";
-            $params[] = $tipificacion_filter;
             $params[] = $tipificacion_filter;
         }
         
@@ -572,8 +584,8 @@ class AsesorController {
         $hoy = date('Y-m-d');
         
         try {
-            // Obtener SOLO clientes con tipificación "volver_llamar" para hoy
-            // y que NO hayan sido gestionados después de esa tipificación
+            // Obtener SOLO clientes con tipificación "volver_llamar" para HOY
+            // basándose en la fecha de próximo contacto, no en la fecha de gestión
             $sql = "SELECT DISTINCT 
                         c.id as cliente_id,
                         c.nombre_completo,
@@ -587,7 +599,7 @@ class AsesorController {
                     INNER JOIN historial_gestion hg ON c.id = hg.cliente_id
                     WHERE c.asesor_id = ? 
                     AND hg.tipo_gestion = 'volver_llamar'
-                    AND DATE(hg.fecha_gestion) = ?
+                    AND DATE(hg.proxima_fecha) = ?
                     AND hg.id = (
                         -- Obtener la gestión más reciente de este cliente
                         SELECT MAX(hg2.id)
@@ -604,7 +616,7 @@ class AsesorController {
                         AND hg3.fecha_gestion > hg.fecha_gestion
                         AND hg3.tipo_gestion != 'volver_llamar'
                     )
-                    ORDER BY hg.fecha_gestion DESC";
+                    ORDER BY hg.proxima_fecha ASC";
             
             $notificaciones = $this->db->fetchAll($sql, [$asesorId, $hoy, $asesorId, $asesorId]);
             

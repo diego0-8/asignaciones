@@ -8,6 +8,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="assets/css/asesor-dashboard.css">
+    <link rel="stylesheet" href="assets/css/asesor-filtros.css">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
 </head>
 <body>
@@ -67,34 +68,60 @@
                     <input type="text" id="search-cedula" placeholder="Buscar por cédula..." value="<?php echo htmlspecialchars($search); ?>">
                 </div>
                 
-                <div class="filter-dropdown">
-                    <select id="estado-filter">
-                        <option value="">Todos los estados</option>
-                        <option value="Disponible" <?php echo $estado_filter === 'Disponible' ? 'selected' : ''; ?>>Disponible</option>
-                        <option value="Contactado" <?php echo $estado_filter === 'Contactado' ? 'selected' : ''; ?>>Contactado</option>
-                        <option value="En Proceso" <?php echo $estado_filter === 'En Proceso' ? 'selected' : ''; ?>>En Proceso</option>
-                        <option value="Cita Programada" <?php echo $estado_filter === 'Cita Programada' ? 'selected' : ''; ?>>Cita Programada</option>
-                        <option value="Cita Completada" <?php echo $estado_filter === 'Cita Completada' ? 'selected' : ''; ?>>Cita Completada</option>
-                        <option value="No Interesado" <?php echo $estado_filter === 'No Interesado' ? 'selected' : ''; ?>>No le Interesa</option>
-                        <option value="No Contactable" <?php echo $estado_filter === 'No Contactable' ? 'selected' : ''; ?>>No Contactable</option>
-                    </select>
+                <!-- Botones de filtro rápido -->
+                <div class="quick-filter-buttons">
+                    <button class="filter-btn active" data-filter="todos" onclick="filtrarRapido('todos')">
+                        <i class="fas fa-users"></i>
+                        Todos los Clientes
+                        <span class="filter-count"><?php echo $total_clientes; ?></span>
+                    </button>
+                    <button class="filter-btn" data-filter="gestionados" onclick="filtrarRapido('gestionados')">
+                        <i class="fas fa-phone"></i>
+                        Gestionados
+                        <span class="filter-count"><?php echo count(array_filter($clientes, function($c) { 
+                            return !empty($c['ultima_gestion']); 
+                        })); ?></span>
+                    </button>
+                    <button class="filter-btn" data-filter="no_gestionados" onclick="filtrarRapido('no_gestionados')">
+                        <i class="fas fa-user-plus"></i>
+                        No Gestionados
+                        <span class="filter-count"><?php echo count(array_filter($clientes, function($c) { 
+                            return empty($c['ultima_gestion']); 
+                        })); ?></span>
+                    </button>
                 </div>
                 
-                <div class="filter-dropdown">
-                    <select id="tipificacion-filter">
-                        <option value="">Todas las tipificaciones</option>
-                        <option value="asignacion_cita" <?php echo $tipificacion_filter === 'asignacion_cita' ? 'selected' : ''; ?>>Cita Programada</option>
-                        <option value="volver_llamar" <?php echo $tipificacion_filter === 'volver_llamar' ? 'selected' : ''; ?>>Volver a Llamar</option>
-                        <option value="fuera_ciudad" <?php echo $tipificacion_filter === 'fuera_ciudad' ? 'selected' : ''; ?>>Fuera de Ciudad</option>
-                        <option value="no_interesa" <?php echo $tipificacion_filter === 'no_interesa' ? 'selected' : ''; ?>>No le Interesa</option>
-                        <option value="no_contactado" <?php echo $tipificacion_filter === 'no_contactado' ? 'selected' : ''; ?>>No Contactado</option>
-                    </select>
+                <!-- Filtros avanzados -->
+                <div class="advanced-filters">
+                    <div class="filter-dropdown">
+                        <select id="estado-filter">
+                            <option value="">Estado de Gestión</option>
+                            <option value="gestionado">Gestionado</option>
+                            <option value="no_gestionado">No Gestionado</option>
+                        </select>
+                    </div>
+                    
+                    <div class="filter-dropdown">
+                        <select id="tipificacion-filter">
+                            <option value="">Tipificación</option>
+                            <option value="asignacion_cita">Asignación de Cita</option>
+                            <option value="volver_llamar">Volver a Llamar</option>
+                            <option value="fuera_ciudad">Fuera de Ciudad</option>
+                            <option value="no_interesa">No le Interesa</option>
+                            <option value="no_contactado">No Contactado</option>
+                        </select>
+                    </div>
+                    
+                    <button class="btn-primary" onclick="aplicarFiltros()">
+                        <i class="fas fa-filter"></i>
+                        Aplicar Filtros
+                    </button>
+                    
+                    <button class="btn-secondary" onclick="limpiarFiltros()">
+                        <i class="fas fa-times"></i>
+                        Limpiar Filtros
+                    </button>
                 </div>
-                
-                <button class="btn-primary" onclick="aplicarFiltros()">
-                    <i class="fas fa-filter"></i>
-                    Aplicar Filtros
-                </button>
             </div>
 
             <!-- Lista de clientes -->
@@ -313,17 +340,27 @@
             const notificationList = document.getElementById('notificationList');
             
             if (notificaciones.length === 0) {
-                notificationList.innerHTML = '<p class="text-center text-muted">No hay clientes para llamar hoy</p>';
+                notificationList.innerHTML = `
+                    <div class="no-notifications">
+                        <i class="fas fa-check-circle"></i>
+                        <h4>No hay clientes para llamar hoy</h4>
+                        <p>¡Excelente! Has completado todas las llamadas programadas para hoy.</p>
+                    </div>`;
             } else {
                 notificationList.innerHTML = notificaciones.map(notif => `
                     <div class="notification-item" data-cliente-id="${notif.cliente_id}">
-                        <h4>${notif.nombre_completo}</h4>
-                        <p><strong>Cédula:</strong> ${notif.cedula} | <strong>Teléfono:</strong> ${notif.telefono}</p>
-                        <p><strong>Programado para:</strong> ${formatearFecha(notif.fecha_gestion)}</p>
-                        <p><strong>Estado:</strong> <span class="badge-volver-llamar">Volver a Llamar</span></p>
+                        <div class="notification-header">
+                            <h4>${notif.nombre_completo}</h4>
+                            <span class="badge-volver-llamar">Volver a Llamar</span>
+                        </div>
+                        <div class="notification-details">
+                            <p><strong>Cédula:</strong> ${notif.cedula}</p>
+                            <p><strong>Teléfono:</strong> ${notif.telefono}</p>
+                            <p><strong>Programado para:</strong> ${formatearFecha(notif.proxima_fecha)}</p>
+                        </div>
                         <div class="notification-actions">
                             <button class="btn-gestionar" onclick="gestionarClienteDesdeNotificacion(${notif.cliente_id})">
-                                <i class="fas fa-phone"></i> Gestionar
+                                <i class="fas fa-phone"></i> Gestionar Ahora
                             </button>
                         </div>
                     </div>
@@ -335,26 +372,45 @@
 
         // Función para formatear fecha
         function formatearFecha(fechaString) {
+            if (!fechaString) return 'No programado';
+            
             const fecha = new Date(fechaString);
-            const hoy = new Date();
+            const ahora = new Date();
+            const hoy = new Date(ahora.getFullYear(), ahora.getMonth(), ahora.getDate());
             const manana = new Date(hoy);
             manana.setDate(hoy.getDate() + 1);
             
+            // Si la fecha es hoy
             if (fecha.toDateString() === hoy.toDateString()) {
-                return 'Hoy - ' + fecha.toLocaleTimeString('es-ES', {hour: '2-digit', minute: '2-digit'});
-            } else if (fecha.toDateString() === manana.toDateString()) {
-                return 'Mañana - ' + fecha.toLocaleTimeString('es-ES', {hour: '2-digit', minute: '2-digit'});
-            } else {
-                return fecha.toLocaleDateString('es-ES', {
-                    weekday: 'long',
-                    year: 'numeric',
-                    month: 'long',
-                    day: 'numeric',
+                const hora = fecha.toLocaleTimeString('es-ES', {hour: '2-digit', minute: '2-digit'});
+                return `Hoy a las ${hora}`;
+            }
+            
+            // Si la fecha es mañana
+            if (fecha.toDateString() === manana.toDateString()) {
+                const hora = fecha.toLocaleTimeString('es-ES', {hour: '2-digit', minute: '2-digit'});
+                return `Mañana a las ${hora}`;
+            }
+            
+            // Si la fecha es pasada
+            if (fecha < ahora) {
+                return 'Vencido - ' + fecha.toLocaleDateString('es-ES', {
+                    day: '2-digit',
+                    month: '2-digit',
                     hour: '2-digit',
                     minute: '2-digit'
                 });
-                }
             }
+            
+            // Para fechas futuras
+            return fecha.toLocaleDateString('es-ES', {
+                weekday: 'short',
+                day: '2-digit',
+                month: 'short',
+                hour: '2-digit',
+                minute: '2-digit'
+            });
+        }
 
         // Función para cerrar el modal de notificaciones
         function cerrarModalNotificaciones() {
@@ -388,6 +444,103 @@
         document.getElementById('notificationModal').addEventListener('click', function(e) {
             if (e.target === this) {
                 cerrarModalNotificaciones();
+            }
+        });
+
+        // ===== FUNCIONES DE FILTRADO =====
+        
+        // Función para filtro rápido (todos, gestionados, no gestionados)
+        function filtrarRapido(tipo) {
+            // Actualizar botones activos
+            document.querySelectorAll('.filter-btn').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            event.target.classList.add('active');
+            
+            // Limpiar filtros avanzados
+            document.getElementById('estado-filter').value = '';
+            document.getElementById('tipificacion-filter').value = '';
+            
+            // Aplicar filtro rápido
+            let url = 'index.php?action=asesor_clientes&page=1';
+            const search = document.getElementById('search-cedula').value;
+            
+            if (search) {
+                url += '&search=' + encodeURIComponent(search);
+            }
+            
+            if (tipo === 'gestionados') {
+                url += '&estado_filter=gestionado';
+            } else if (tipo === 'no_gestionados') {
+                url += '&estado_filter=no_gestionado';
+            }
+            
+            // Redirigir con el filtro aplicado
+            window.location.href = url;
+        }
+        
+        // Función para aplicar filtros avanzados
+        function aplicarFiltros() {
+            const search = document.getElementById('search-cedula').value;
+            const estadoFilter = document.getElementById('estado-filter').value;
+            const tipificacionFilter = document.getElementById('tipificacion-filter').value;
+            
+            // Construir URL con filtros
+            let url = 'index.php?action=asesor_clientes&page=1';
+            
+            if (search) {
+                url += '&search=' + encodeURIComponent(search);
+            }
+            
+            if (estadoFilter) {
+                url += '&estado_filter=' + encodeURIComponent(estadoFilter);
+            }
+            
+            if (tipificacionFilter) {
+                url += '&tipificacion_filter=' + encodeURIComponent(tipificacionFilter);
+            }
+            
+            // Redirigir con los filtros aplicados
+            window.location.href = url;
+        }
+        
+        // Función para limpiar todos los filtros
+        function limpiarFiltros() {
+            document.getElementById('search-cedula').value = '';
+            document.getElementById('estado-filter').value = '';
+            document.getElementById('tipificacion-filter').value = '';
+            
+            // Remover clase active de todos los botones
+            document.querySelectorAll('.filter-btn').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            
+            // Marcar "Todos los Clientes" como activo
+            document.querySelector('[data-filter="todos"]').classList.add('active');
+            
+            // Redirigir sin filtros
+            window.location.href = 'index.php?action=asesor_clientes&page=1';
+        }
+        
+        // Event listener para búsqueda con Enter
+        document.getElementById('search-cedula').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                aplicarFiltros();
+            }
+        });
+        
+        // Marcar botón activo según filtros actuales
+        document.addEventListener('DOMContentLoaded', function() {
+            const estadoFilter = '<?php echo $estado_filter ?? ""; ?>';
+            const tipificacionFilter = '<?php echo $tipificacion_filter ?? ""; ?>';
+            
+            // Si hay filtros aplicados, marcar el botón correspondiente
+            if (estadoFilter === 'gestionado') {
+                document.querySelector('[data-filter="gestionados"]').classList.add('active');
+                document.querySelector('[data-filter="todos"]').classList.remove('active');
+            } else if (estadoFilter === 'no_gestionado') {
+                document.querySelector('[data-filter="no_gestionados"]').classList.add('active');
+                document.querySelector('[data-filter="todos"]').classList.remove('active');
             }
         });
     </script>

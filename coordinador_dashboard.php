@@ -136,7 +136,7 @@
                                 <span class="progress-text"><?php echo $asesor['porcentaje_progreso']; ?>% Completado</span>
                                 
                                 <div class="asesor-actions">
-                                    <button class="btn btn-primary btn-sm" onclick="verDetallesAsesor(<?php echo $asesor['asesor_id']; ?>)">
+                                    <button class="btn btn-primary btn-sm" onclick="abrirModalAsesor(<?php echo $asesor['asesor_id']; ?>)">
                                         <i class="fas fa-eye"></i> Detalles
                                     </button>
                                 </div>

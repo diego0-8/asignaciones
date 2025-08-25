@@ -1,729 +1,518 @@
 /**
  * JavaScript para el Dashboard del Coordinador
- * Maneja la lógica de modales, búsqueda, filtros y transferencia de clientes
+ * Maneja modales, filtros y funcionalidades de gestión de asesores
  */
 
 // Variables globales
 let asesorActual = null;
-let clientesActuales = [];
+let clientesAsesor = [];
 let clientesFiltrados = [];
-let clienteTransferirActual = null;
 
-// Inicialización cuando se carga la página
-document.addEventListener('DOMContentLoaded', function() {
-    console.log('Inicializando dashboard del coordinador...');
-    
-    // Configurar eventos de búsqueda
-    setupSearchEvents();
-    
-    console.log('Dashboard del coordinador inicializado correctamente');
-});
+// ===== FUNCIONES DE MODALES =====
 
-/**
- * Configurar eventos de búsqueda
- */
-function setupSearchEvents() {
-    const searchInput = document.getElementById('searchCedula');
-    if (searchInput) {
-        // Búsqueda en tiempo real
-        searchInput.addEventListener('input', function() {
-            if (this.value.length >= 3) {
-                filtrarClientes();
-            } else if (this.value.length === 0) {
-                mostrarTodosLosClientes();
-            }
-        });
-        
-        // Búsqueda con Enter
-        searchInput.addEventListener('keypress', function(e) {
-            if (e.key === 'Enter') {
-                buscarCliente();
-            }
-        });
-    }
+function abrirModalAsesor(asesorId) {
+    asesorActual = asesorId;
+    cargarDetallesAsesor(asesorId);
+    document.getElementById('asesorModal').style.display = 'block';
 }
 
-/**
- * Ver detalles del asesor
- */
-function verDetallesAsesor(asesorId) {
-    console.log('🔍 Ver detalles del asesor ID:', asesorId);
+function cerrarModalAsesor() {
+    document.getElementById('asesorModal').style.display = 'none';
+    asesorActual = null;
+    clientesAsesor = [];
+    clientesFiltrados = [];
+}
+
+function abrirModalTransferir(clienteId, clienteNombre, clienteCedula, asesorActual) {
+    document.getElementById('clienteTransferirNombre').textContent = clienteNombre;
+    document.getElementById('clienteTransferirCedula').textContent = clienteCedula;
+    document.getElementById('clienteTransferirAsesorActual').textContent = asesorActual;
     
-    // Mostrar modal
-    const modal = document.getElementById('asesorModal');
-    if (modal) {
-        modal.style.display = 'block';
-        
-        // Mostrar indicador de carga
-        mostrarCargandoDetalles();
-        
-        // Cargar datos del asesor
-        cargarDetallesAsesor(asesorId);
-    }
+    // Cargar asesores disponibles
+    cargarAsesoresDisponibles();
+    
+    document.getElementById('transferirModal').style.display = 'block';
 }
 
-/**
- * Mostrar indicador de carga en detalles
- */
-function mostrarCargandoDetalles() {
-    const modalBody = document.querySelector('#asesorModal .modal-body');
-    if (modalBody) {
-        modalBody.innerHTML = `
-            <div class="loading-container">
-                <i class="fas fa-spinner fa-spin" style="font-size: 3em; color: #007bff; margin-bottom: 20px;"></i>
-                <h4>Cargando detalles del asesor...</h4>
-                <p>Por favor espera mientras se cargan los datos</p>
-            </div>
-        `;
-    }
+function cerrarModalTransferir() {
+    document.getElementById('transferirModal').style.display = 'none';
 }
 
-/**
- * Cargar detalles del asesor desde el servidor
- */
+// ===== FUNCIONES DE CARGA DE DATOS =====
+
 function cargarDetallesAsesor(asesorId) {
-    console.log('📡 Cargando detalles del asesor ID:', asesorId);
+    // Guardar el ID del asesor actual
+    asesorActualId = asesorId;
     
-    const formData = new FormData();
-    formData.append('asesor_id', asesorId);
+    // Mostrar loading
+    mostrarLoading();
     
-    fetch('index.php?action=coordinador_obtener_detalles_asesor', {
-        method: 'POST',
-        body: formData
-    })
-    .then(response => {
-        if (!response.ok) {
-            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-        }
-        return response.json();
-    })
-    .then(data => {
-        console.log('Detalles del asesor recibidos:', data);
+    fetch(`index.php?action=coordinador_obtener_detalles_asesor&asesor_id=${asesorId}`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                mostrarDetallesAsesor(data.asesor, data.clientes);
+                clientesAsesor = data.clientes;
+                clientesFiltrados = [...data.clientes];
+                aplicarFiltros();
+            } else {
+                mostrarAlerta(data.error, 'error');
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            mostrarAlerta('Error al cargar detalles del asesor', 'error');
+        })
+        .finally(() => {
+            ocultarLoading();
+        });
+}
+
+function cargarAsesoresDisponibles() {
+    const select = document.getElementById('nuevoAsesor');
+    select.innerHTML = '<option value="">Cargando asesores...</option>';
+    
+    fetch('index.php?action=coordinador_obtener_asesores_disponibles')
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                select.innerHTML = '<option value="">Selecciona un asesor...</option>';
+                data.asesores.forEach(asesor => {
+                    const option = document.createElement('option');
+                    option.value = asesor.id;
+                    option.textContent = asesor.nombre_completo;
+                    select.appendChild(option);
+                });
+            } else {
+                select.innerHTML = '<option value="">Error al cargar asesores</option>';
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            select.innerHTML = '<option value="">Error al cargar asesores</option>';
+        });
+}
+
+// ===== FUNCIONES DE FILTRADO =====
+
+function filtrarPorTipificacion() {
+    aplicarFiltros();
+}
+
+function filtrarPorEstado() {
+    aplicarFiltros();
+}
+
+function aplicarFiltros() {
+    const filtroTipificacion = document.getElementById('filterTipificacion').value;
+    const filtroEstado = document.getElementById('filterEstado').value;
+    
+    clientesFiltrados = clientesAsesor.filter(cliente => {
+        let cumpleTipificacion = true;
+        let cumpleEstado = true;
         
-        if (data.success) {
-            asesorActual = data.asesor;
-            clientesActuales = data.clientes || [];
-            clientesFiltrados = [...clientesActuales];
-            
-            mostrarDetallesAsesorEnModal(data.asesor);
-            mostrarClientesEnTabla(clientesActuales);
-            actualizarEstadisticasAsesor(data.asesor);
-        } else {
-            mostrarErrorDetalles(data.error || 'Error al cargar detalles del asesor');
+        // Filtro de tipificación
+        if (filtroTipificacion) {
+            if (filtroTipificacion === 'contactado') {
+                cumpleTipificacion = ['asignacion_cita', 'volver_llamar', 'fuera_ciudad', 'no_interesa'].includes(cliente.tipificacion);
+            } else if (filtroTipificacion === 'no_contactado') {
+                cumpleTipificacion = ['no_contactado', 'disponible'].includes(cliente.tipificacion);
+            } else {
+                cumpleTipificacion = cliente.tipificacion === filtroTipificacion;
+            }
         }
-    })
-    .catch(error => {
-        console.error('Error al cargar detalles del asesor:', error);
-        mostrarErrorDetalles('Error de conexión: ' + error.message);
+        
+        // Filtro de estado
+        if (filtroEstado) {
+            cumpleEstado = cliente.estado_gestion === filtroEstado;
+        }
+        
+        return cumpleTipificacion && cumpleEstado;
     });
+    
+    mostrarClientesFiltrados();
 }
 
-/**
- * Mostrar detalles del asesor en el modal
- */
-function mostrarDetallesAsesorEnModal(asesor) {
-    const modalBody = document.querySelector('#asesorModal .modal-body');
-    if (!modalBody) return;
-    
-    modalBody.innerHTML = `
-        <!-- Información del Asesor -->
-        <div class="asesor-info-section">
-            <div class="asesor-profile">
-                <div class="asesor-avatar">
-                    <i class="fas fa-user-tie"></i>
-                </div>
-                <div class="asesor-details">
-                    <h4 id="asesorNombre">${asesor.nombre_completo || 'N/A'}</h4>
-                    <p id="asesorUsuario">Usuario: ${asesor.usuario || 'N/A'}</p>
-                    <span class="asesor-status-badge active">Activo</span>
-                </div>
-            </div>
-            
-            <div class="asesor-stats-summary">
-                <div class="stat-summary-item">
-                    <span class="stat-number" id="totalClientesAsesor">${asesor.total_clientes || 0}</span>
-                    <span class="stat-label">Total Clientes</span>
-                </div>
-                <div class="stat-summary-item">
-                    <span class="stat-number" id="clientesGestionados">${asesor.clientes_gestionados || 0}</span>
-                    <span class="stat-label">Gestionados</span>
-                </div>
-                <div class="stat-summary-item">
-                    <span class="stat-number" id="clientesPendientes">${asesor.clientes_pendientes || 0}</span>
-                    <span class="stat-label">Pendientes</span>
-                </div>
-            </div>
-        </div>
-
-        <!-- Barra de Búsqueda y Filtros -->
-        <div class="search-filters-section">
-            <div class="search-box">
-                <input type="text" id="searchCedula" placeholder="🔍 Buscar por cédula..." class="search-input">
-                <button type="button" onclick="buscarCliente()" class="btn-search">
-                    <i class="fas fa-search"></i>
-                </button>
-            </div>
-            
-            <div class="filters-container">
-                <select id="filterTipificacion" onchange="filtrarPorTipificacion()" class="filter-select">
-                    <option value="">📋 Todas las tipificaciones</option>
-                    <option value="asignacion_cita">📅 Asignación de Citas</option>
-                    <option value="volver_llamar">📞 Volver a Llamar</option>
-                    <option value="fuera_ciudad">🌍 Fuera de Ciudad</option>
-                    <option value="no_interesa">❌ No Interesa</option>
-                    <option value="contactado">✅ Contactado</option>
-                    <option value="no_contactado">📵 No Contactado</option>
-                </select>
-                
-                <select id="filterEstado" onchange="filtrarPorEstado()" class="filter-select">
-                    <option value="">🏷️ Todos los estados</option>
-                    <option value="Disponible">⏳ Disponible</option>
-                    <option value="Contactado">📵 Contactado</option>
-                    <option value="En Proceso">🔄 En Proceso</option>
-                    <option value="Cita Programada">📅 Cita Programada</option>
-                    <option value="Cita Completada">✅ Cita Completada</option>
-                    <option value="No Interesa">❌ No Interesa</option>
-                </select>
-            </div>
-        </div>
-
-        <!-- Lista de Clientes -->
-        <div class="clientes-section">
-            <h4>📋 Clientes del Asesor</h4>
-            <div class="clientes-table-container">
-                <table class="clientes-table" id="clientesTable">
-                    <thead>
-                        <tr>
-                            <th>Cliente</th>
-                            <th>Cédula</th>
-                            <th>Teléfono</th>
-                            <th>Estado</th>
-                            <th>Última Gestión</th>
-                            <th>Tipificación</th>
-                            <th>Acciones</th>
-                        </tr>
-                    </thead>
-                    <tbody id="clientesTableBody">
-                        <!-- Los clientes se cargarán dinámicamente -->
-                    </tbody>
-                </table>
-            </div>
-            <div id="noClientesMessage" class="no-data-message" style="display: none;">
-                <i class="fas fa-info-circle"></i>
-                <p>No se encontraron clientes con los filtros aplicados.</p>
-            </div>
-        </div>
-    `;
-    
-    // Reconfigurar eventos después de recrear el HTML
-    setupSearchEvents();
-}
-
-/**
- * Mostrar clientes en la tabla
- */
 function mostrarClientesEnTabla(clientes) {
     const tbody = document.getElementById('clientesTableBody');
     const noClientesMessage = document.getElementById('noClientesMessage');
     
-    if (!tbody) return;
+    if (!tbody) {
+        console.error('No se encontró el tbody de la tabla de clientes');
+        return;
+    }
     
     if (clientes.length === 0) {
         tbody.innerHTML = '';
-        if (noClientesMessage) {
-            noClientesMessage.style.display = 'block';
-        }
+        if (noClientesMessage) noClientesMessage.style.display = 'block';
         return;
     }
     
-    if (noClientesMessage) {
-        noClientesMessage.style.display = 'none';
-    }
+    if (noClientesMessage) noClientesMessage.style.display = 'none';
     
-    let html = '';
+    tbody.innerHTML = '';
     
     clientes.forEach(cliente => {
-        const estadoClass = getEstadoClass(cliente.estado_gestion);
-        const tipificacionClass = getTipificacionClass(cliente.ultima_tipificacion);
-        
-        html += `
-            <tr>
-                <td>${cliente.nombre_completo || 'N/A'}</td>
-                <td>${cliente.cedula || 'N/A'}</td>
+        const row = document.createElement('tr');
+        row.innerHTML = `
+            <td>${cliente.nombre_completo}</td>
+            <td>${cliente.cedula}</td>
+            <td>${cliente.telefono || 'N/A'}</td>
+            <td>
+                <span class="badge badge-${getBadgeClass(cliente.estado_gestion)}">
+                    ${cliente.estado_gestion}
+                </span>
+            </td>
+            <td>${cliente.ultima_tipificacion || 'N/A'}</td>
+            <td>
+                <span class="badge badge-${getTipificacionBadgeClass(cliente.ultima_tipificacion)}">
+                    ${cliente.ultima_tipificacion || 'Sin tipificación'}
+                </span>
+            </td>
+            <td>
+                <div class="action-buttons">
+                    <button class="btn btn-sm btn-primary" onclick="liberarCliente(${cliente.id})" title="Liberar Cliente">
+                        <i class="fas fa-unlock"></i>
+                    </button>
+                    <button class="btn btn-sm btn-secondary" onclick="transferirCliente(${cliente.id})" title="Transferir Cliente">
+                        <i class="fas fa-exchange-alt"></i>
+                    </button>
+                </div>
+            </td>
+        `;
+        tbody.appendChild(row);
+    });
+}
+
+function mostrarClientesFiltrados() {
+    const tbody = document.getElementById('clientesTableBody');
+    const noClientesMessage = document.getElementById('noClientesMessage');
+    
+    if (clientesFiltrados.length === 0) {
+        tbody.innerHTML = '';
+        if (noClientesMessage) noClientesMessage.style.display = 'block';
+        return;
+    }
+    
+        noClientesMessage.style.display = 'none';
+    
+    tbody.innerHTML = clientesFiltrados.map(cliente => `
+        <tr>
+            <td>${cliente.nombre_completo}</td>
+            <td>${cliente.cedula}</td>
                 <td>${cliente.telefono || 'N/A'}</td>
                 <td>
-                    <span class="cliente-estado ${estadoClass}">
-                        ${formatearEstado(cliente.estado_gestion)}
+                <span class="estado-badge estado-${cliente.estado_gestion.toLowerCase().replace(' ', '-')}">
+                    ${cliente.estado_gestion}
                     </span>
                 </td>
-                <td>${formatearFecha(cliente.ultima_gestion)}</td>
+            <td>${cliente.ultima_gestion || 'N/A'}</td>
                 <td>
-                    <span class="cliente-tipificacion ${tipificacionClass}">
-                        ${formatearTipificacion(cliente.ultima_tipificacion)}
+                <span class="tipificacion-badge tipificacion-${cliente.tipificacion || 'disponible'}">
+                    ${obtenerNombreTipificacion(cliente.tipificacion)}
                     </span>
                 </td>
                 <td>
-                    ${generarBotonesAccion(cliente)}
+                <div class="acciones-cliente">
+                    <button class="btn-accion btn-transferir" onclick="abrirModalTransferir('${cliente.id}', '${cliente.nombre_completo}', '${cliente.cedula}', '${asesorActual}')" title="Transferir Cliente">
+                        <i class="fas fa-exchange-alt"></i>
+                    </button>
+                    <button class="btn-accion btn-liberar" onclick="liberarCliente('${cliente.id}')" title="Liberar Cliente">
+                        <i class="fas fa-unlock"></i>
+                    </button>
+                </div>
                 </td>
             </tr>
-        `;
+    `).join('');
+}
+
+function obtenerNombreTipificacion(tipificacion) {
+    const nombres = {
+        'disponible': 'Disponible',
+        'contactado': 'Contactado',
+        'asignacion_cita': 'Asignación de Cita',
+        'volver_llamar': 'Volver a Llamar',
+        'fuera_ciudad': 'Fuera de Ciudad',
+        'no_interesa': 'No Interesa',
+        'no_contactado': 'No Contactado'
+    };
+    
+    return nombres[tipificacion] || 'Disponible';
+}
+
+// ===== FUNCIONES DE ACCIONES =====
+
+function liberarCliente(clienteId) {
+    if (!confirm('¿Estás seguro de que quieres liberar este cliente? Volverá a estar disponible para asignación.')) {
+        return;
+    }
+    
+    fetch('index.php?action=coordinador_liberar_cliente', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: new URLSearchParams({
+            cliente_id: clienteId
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            mostrarAlerta('Cliente liberado exitosamente', 'success');
+            // Recargar detalles del asesor
+            cargarDetallesAsesor(asesorActual);
+        } else {
+            mostrarAlerta(data.error, 'error');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        mostrarAlerta('Error al liberar el cliente', 'error');
     });
-    
-    tbody.innerHTML = html;
 }
 
-/**
- * Generar botones de acción según el cliente
- */
-function generarBotonesAccion(cliente) {
-    let botones = '';
+function confirmarTransferirCliente() {
+    const nuevoAsesorId = document.getElementById('nuevoAsesor').value;
+    const motivo = document.getElementById('motivoTransferir').value;
     
-    // Botón de transferir para clientes que pueden ser transferidos
-    if (cliente.ultima_tipificacion === 'volver_llamar' || 
-        cliente.ultima_tipificacion === 'asignacion_cita' || 
-        cliente.estado_gestion === 'Contactado' ||
-        cliente.estado_gestion === 'En Proceso') {
-        botones += `
-            <button class="btn-accion btn-transferir" onclick="transferirCliente(${cliente.id}, '${cliente.nombre_completo}', '${cliente.cedula}')">
-                <i class="fas fa-exchange-alt"></i> Transferir
-            </button>
-        `;
+    if (!nuevoAsesorId) {
+        mostrarAlerta('Debes seleccionar un nuevo asesor', 'error');
+        return;
     }
     
-    // Botón de ver detalles para todos
-    botones += `
-        <button class="btn-accion btn-ver-detalles" onclick="verDetallesCliente(${cliente.id})">
-            <i class="fas fa-eye"></i> Ver
-        </button>
-    `;
+    // Obtener el cliente actual del modal
+    const clienteId = obtenerClienteIdDelModal();
     
-    return botones;
+    fetch('index.php?action=coordinador_transferir_cliente', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: new URLSearchParams({
+            cliente_id: clienteId,
+            nuevo_asesor_id: nuevoAsesorId,
+            motivo: motivo
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            mostrarAlerta('Cliente transferido exitosamente', 'success');
+            cerrarModalTransferir();
+            // Recargar detalles del asesor
+            cargarDetallesAsesor(asesorActual);
+        } else {
+            mostrarAlerta(data.error, 'error');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        mostrarAlerta('Error al transferir el cliente', 'error');
+    });
 }
 
-/**
- * Obtener clase CSS para el estado
- */
-function getEstadoClass(estado) {
-    if (!estado) return 'disponible';
-    
-    switch (estado.toLowerCase()) {
-        case 'disponible':
-            return 'disponible';
-        case 'contactado':
-            return 'contactado';
-        case 'en proceso':
-            return 'en-proceso';
-        case 'cita programada':
-            return 'cita-programada';
-        case 'cita completada':
-            return 'cita-completada';
-        case 'no interesa':
-            return 'no-interesa';
-        default:
-            return 'disponible';
-    }
+function obtenerClienteIdDelModal() {
+    // Esta función debe obtener el ID del cliente del modal
+    // Por ahora, usaremos una variable global o la pasaremos como parámetro
+    return window.clienteTransferirId;
 }
 
-/**
- * Obtener clase CSS para la tipificación
- */
-function getTipificacionClass(tipificacion) {
-    if (!tipificacion) return '';
-    
-    return tipificacion.replace(/\s+/g, '_').toLowerCase();
-}
+// ===== FUNCIONES DE BÚSQUEDA =====
 
-/**
- * Formatear estado para mostrar
- */
-function formatearEstado(estado) {
-    if (!estado) return 'No Gestionado';
-    
-    return estado.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
-}
-
-/**
- * Formatear tipificación para mostrar
- */
-function formatearTipificacion(tipificacion) {
-    if (!tipificacion) return 'Sin tipificación';
-    
-    return tipificacion.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
-}
-
-/**
- * Formatear fecha para mostrar
- */
-function formatearFecha(fecha) {
-    if (!fecha || fecha === '0000-00-00 00:00:00') return 'N/A';
-    
-    try {
-        const date = new Date(fecha);
-        return date.toLocaleDateString('es-ES', {
-            day: '2-digit',
-            month: '2-digit',
-            year: 'numeric',
-            hour: '2-digit',
-            minute: '2-digit'
-        });
-    } catch (e) {
-        return 'N/A';
-    }
-}
-
-/**
- * Actualizar estadísticas del asesor
- */
-function actualizarEstadisticasAsesor(asesor) {
-    document.getElementById('totalClientesAsesor').textContent = asesor.total_clientes || 0;
-    document.getElementById('clientesGestionados').textContent = asesor.clientes_gestionados || 0;
-    document.getElementById('clientesPendientes').textContent = asesor.clientes_pendientes || 0;
-}
-
-/**
- * Buscar cliente por cédula
- */
 function buscarCliente() {
-    const searchTerm = document.getElementById('searchCedula').value.trim();
+    const cedula = document.getElementById('searchCedula').value.trim();
     
-    if (searchTerm.length === 0) {
-        mostrarTodosLosClientes();
+    if (!cedula) {
+        clientesFiltrados = [...clientesAsesor];
+        aplicarFiltros();
         return;
     }
     
-    console.log('🔍 Buscando cliente con cédula:', searchTerm);
-    
-    const clientesEncontrados = clientesActuales.filter(cliente => 
-        cliente.cedula && cliente.cedula.toString().includes(searchTerm)
+    clientesFiltrados = clientesAsesor.filter(cliente => 
+        cliente.cedula.includes(cedula)
     );
     
-    if (clientesEncontrados.length > 0) {
-        clientesFiltrados = clientesEncontrados;
-        mostrarClientesEnTabla(clientesEncontrados);
-        console.log('✅ Clientes encontrados:', clientesEncontrados.length);
-    } else {
-        console.log('❌ No se encontraron clientes con esa cédula');
-        mostrarClientesEnTabla([]);
-        mostrarMensajeNoClientes();
+    mostrarClientesFiltrados();
+}
+
+// ===== FUNCIONES DE UTILIDAD =====
+
+function getBadgeClass(estado) {
+    switch (estado) {
+        case 'Disponible': return 'warning';
+        case 'Contactado': return 'info';
+        case 'En Proceso': return 'primary';
+        case 'Cita Programada': return 'success';
+        case 'Cita Completada': return 'success';
+        case 'No Interesado': return 'danger';
+        case 'No Contactable': return 'secondary';
+        case 'Asignado': return 'primary';
+        default: return 'secondary';
     }
 }
 
-/**
- * Filtrar por tipificación
- */
-function filtrarPorTipificacion() {
-    const tipificacion = document.getElementById('filterTipificacion').value;
-    const estado = document.getElementById('filterEstado').value;
-    
-    aplicarFiltros(tipificacion, estado);
-}
-
-/**
- * Filtrar por estado
- */
-function filtrarPorEstado() {
-    const tipificacion = document.getElementById('filterTipificacion').value;
-    const estado = document.getElementById('filterEstado').value;
-    
-    aplicarFiltros(tipificacion, estado);
-}
-
-/**
- * Aplicar filtros combinados
- */
-function aplicarFiltros(tipificacion, estado) {
-    console.log('🔍 Aplicando filtros - Tipificación:', tipificacion, 'Estado:', estado);
-    
-    let filtrados = [...clientesActuales];
-    
-    // Filtrar por tipificación
-    if (tipificacion) {
-        filtrados = filtrados.filter(cliente => 
-            cliente.ultima_tipificacion === tipificacion
-        );
+function getTipificacionBadgeClass(tipificacion) {
+    switch (tipificacion) {
+        case 'asignacion_cita': return 'success';
+        case 'volver_llamar': return 'warning';
+        case 'fuera_ciudad': return 'info';
+        case 'no_interesa': return 'danger';
+        case 'contactado': return 'success';
+        case 'no_contactado': return 'secondary';
+        default: return 'secondary';
     }
-    
-    // Filtrar por estado
-    if (estado) {
-        filtrados = filtrados.filter(cliente => 
-            cliente.estado_gestion === estado
-        );
-    }
-    
-    clientesFiltrados = filtrados;
-    mostrarClientesEnTabla(filtrados);
 }
 
-/**
- * Mostrar todos los clientes
- */
-function mostrarTodosLosClientes() {
-    clientesFiltrados = [...clientesActuales];
-    mostrarClientesEnTabla(clientesActuales);
-}
-
-/**
- * Filtrar clientes (función auxiliar)
- */
-function filtrarClientes() {
-    const searchTerm = document.getElementById('searchCedula').value.trim();
+function mostrarDetallesAsesor(asesor, clientes) {
+    console.log('Mostrando detalles del asesor:', asesor);
+    console.log('Clientes del asesor:', clientes);
     
-    if (searchTerm.length === 0) {
-        mostrarTodosLosClientes();
-        return;
-    }
+    // Actualizar título y nombre del asesor
+    const modalTitle = document.getElementById('asesorModalTitle');
+    const asesorNombre = document.getElementById('asesorNombre');
+    const asesorEmail = document.getElementById('asesorEmail');
     
-    const filtrados = clientesActuales.filter(cliente => 
-        cliente.cedula && cliente.cedula.toLowerCase().includes(searchTerm.toLowerCase())
-    );
+    if (modalTitle) modalTitle.textContent = `Detalles del Asesor: ${asesor.nombre_completo}`;
+    if (asesorNombre) asesorNombre.textContent = asesor.nombre_completo;
+    if (asesorEmail) asesorEmail.textContent = asesor.usuario || 'N/A';
     
-    clientesFiltrados = filtrados;
-    mostrarClientesEnTabla(filtrados);
-}
-
-/**
- * Transferir cliente a otro asesor
- */
-function transferirCliente(clienteId, nombreCliente, cedulaCliente) {
-    console.log('🔄 Transferir cliente:', clienteId, nombreCliente, cedulaCliente);
+    // Actualizar estadísticas
+    const totalClientes = document.getElementById('totalClientesAsesor');
+    const clientesGestionados = document.getElementById('clientesGestionados');
+    const clientesPendientes = document.getElementById('clientesPendientes');
     
-    // Asignar el cliente a la variable global
-    clienteTransferirActual = { id: clienteId, nombre_completo: nombreCliente, cedula: cedulaCliente };
-
-    // Mostrar modal de transferencia
-    const modal = document.getElementById('transferirModal');
+    if (totalClientes) totalClientes.textContent = clientes.length;
+    if (clientesGestionados) clientesGestionados.textContent = clientes.filter(c => c.estado_gestion !== 'Disponible').length;
+    if (clientesPendientes) clientesPendientes.textContent = clientes.filter(c => c.estado_gestion === 'Disponible').length;
+    
+    // Mostrar clientes en la tabla
+    mostrarClientesEnTabla(clientes);
+    
+    // Mostrar el modal
+    const modal = document.getElementById('asesorModal');
     if (modal) {
-        // Configurar información del cliente
-        document.getElementById('clienteTransferirNombre').textContent = nombreCliente;
-        document.getElementById('clienteTransferirCedula').textContent = cedulaCliente;
-        document.getElementById('clienteTransferirAsesorActual').textContent = asesorActual?.nombre_completo || 'N/A';
-        
-        // Cargar lista de asesores disponibles
-        cargarAsesoresDisponibles();
-        
-        // Mostrar modal
         modal.style.display = 'block';
     }
 }
 
-/**
- * Cargar asesores disponibles para transferencia
- */
-function cargarAsesoresDisponibles() {
-    console.log('📡 Cargando asesores disponibles...');
-    
-    fetch('index.php?action=coordinador_obtener_asesores_disponibles', {
-        method: 'POST'
-    })
-    .then(response => {
-        if (!response.ok) {
-            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-        }
-        return response.json();
-    })
-    .then(data => {
-        console.log('Asesores disponibles recibidos:', data);
-        
-        if (data.success) {
-            llenarSelectAsesores(data.asesores);
-        } else {
-            console.error('Error al cargar asesores:', data.error);
-        }
-    })
-    .catch(error => {
-        console.error('Error al cargar asesores disponibles:', error);
-    });
+function mostrarLoading() {
+    // Implementar indicador de carga
+    const modalBody = document.querySelector('#asesorModal .modal-body');
+    modalBody.innerHTML = '<div class="loading">Cargando...</div>';
 }
 
-/**
- * Llenar select de asesores
- */
-function llenarSelectAsesores(asesores) {
-    const select = document.getElementById('nuevoAsesor');
-    if (!select) return;
-    
-    // Limpiar opciones existentes
-    select.innerHTML = '<option value="">Selecciona un asesor...</option>';
-    
-    // Agregar asesores disponibles
-    asesores.forEach(asesor => {
-        if (asesor.id != asesorActual?.id) { // Excluir asesor actual
-            const option = document.createElement('option');
-            option.value = asesor.id;
-            option.textContent = asesor.nombre_completo;
-            select.appendChild(option);
-        }
-    });
+function ocultarLoading() {
+    // El contenido se carga en mostrarDetallesAsesor
 }
 
-/**
- * Confirmar transferencia de cliente
- */
-function confirmarTransferirCliente() {
+function mostrarAlerta(mensaje, tipo) {
+    // Crear contenedor de alertas si no existe
+    let alertContainer = document.getElementById('alertContainer');
+    if (!alertContainer) {
+        alertContainer = document.createElement('div');
+        alertContainer.id = 'alertContainer';
+        alertContainer.className = 'alert-container';
+        document.body.appendChild(alertContainer);
+    }
+    
+    const alertDiv = document.createElement('div');
+    alertDiv.className = `alert alert-${tipo}`;
+    alertDiv.innerHTML = `
+        <span>${mensaje}</span>
+        <button type="button" class="alert-close" onclick="this.parentElement.remove()">
+            <i class="fas fa-times"></i>
+        </button>
+    `;
+    
+    alertContainer.appendChild(alertDiv);
+    
+    // Auto-remove after 5 seconds
+    setTimeout(() => {
+        if (alertDiv.parentElement) {
+            alertDiv.remove();
+        }
+    }, 5000);
+}
+
+// ===== FUNCIONES DE ACCIONES DE CLIENTES =====
+
+function liberarCliente(clienteId) {
+    if (confirm('¿Estás seguro de que quieres liberar este cliente?')) {
+        fetch('index.php?action=coordinador_liberar_cliente', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded',
+            },
+            body: `cliente_id=${clienteId}`
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                mostrarAlerta('Cliente liberado exitosamente', 'success');
+                // Recargar detalles del asesor
+                cargarDetallesAsesor(asesorActualId);
+            } else {
+                mostrarAlerta(data.error || 'Error al liberar el cliente', 'error');
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            mostrarAlerta('Error al liberar el cliente', 'error');
+        });
+    }
+}
+
+function transferirCliente(clienteId) {
     const nuevoAsesorId = document.getElementById('nuevoAsesor').value;
-    const motivo = document.getElementById('motivoTransferir').value.trim();
     
     if (!nuevoAsesorId) {
-        alert('Por favor selecciona un nuevo asesor');
+        mostrarAlerta('Por favor selecciona un asesor', 'warning');
         return;
     }
-    
-    if (!motivo) {
-        alert('Por favor explica el motivo de la transferencia');
-        return;
-    }
-    
-    console.log('✅ Confirmando transferencia...');
-    console.log('Nuevo asesor ID:', nuevoAsesorId);
-    console.log('Motivo:', motivo);
-    
-    // Mostrar indicador de carga
-    const btnConfirmar = document.querySelector('#transferirModal .btn-primary');
-    const textoOriginal = btnConfirmar.textContent;
-    btnConfirmar.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Transferiendo...';
-    btnConfirmar.disabled = true;
-    
-    // Realizar transferencia
-    const formData = new FormData();
-    formData.append('cliente_id', clienteTransferirActual.id);
-    formData.append('nuevo_asesor_id', nuevoAsesorId);
-    formData.append('motivo', motivo);
     
     fetch('index.php?action=coordinador_transferir_cliente', {
         method: 'POST',
-        body: formData
+        headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: `cliente_id=${clienteId}&nuevo_asesor_id=${nuevoAsesorId}`
     })
-    .then(response => {
-        if (!response.ok) {
-            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-        }
-        return response.json();
-    })
+    .then(response => response.json())
     .then(data => {
-        console.log('Respuesta de transferencia:', data);
-        
         if (data.success) {
-            // Mostrar mensaje de éxito
-            alert(`✅ Cliente transferido exitosamente a ${data.asesor_nuevo}`);
-            
-            // Cerrar modal
-            cerrarModalTransferir();
-            
-            // Recargar datos del asesor
-            if (asesorActual) {
-                cargarDetallesAsesor(asesorActual.id);
-            }
+            mostrarAlerta('Cliente transferido exitosamente', 'success');
+            // Recargar detalles del asesor
+            cargarDetallesAsesor(asesorActualId);
         } else {
-            alert('❌ Error al transferir cliente: ' + (data.error || 'Error desconocido'));
+            mostrarAlerta(data.error || 'Error al transferir el cliente', 'error');
         }
     })
     .catch(error => {
-        console.error('Error en transferencia:', error);
-        alert('❌ Error de conexión: ' + error.message);
-    })
-    .finally(() => {
-        // Restaurar botón
-        btnConfirmar.innerHTML = textoOriginal;
-        btnConfirmar.disabled = false;
+        console.error('Error:', error);
+        mostrarAlerta('Error al transferir el cliente', 'error');
     });
 }
 
-/**
- * Ver detalles de un cliente específico
- */
-function verDetallesCliente(clienteId) {
-    console.log('👁️ Ver detalles del cliente ID:', clienteId);
-    
-    // Aquí puedes implementar un modal para mostrar detalles del cliente
-    // Por ahora solo mostramos un alert
-    alert('Función de ver detalles del cliente en desarrollo');
-}
+// Variable global para el ID del asesor actual
+let asesorActualId = null;
 
-/**
- * Mostrar mensaje cuando no hay clientes
- */
-function mostrarMensajeNoClientes() {
-    const tbody = document.getElementById('clientesTableBody');
-    if (tbody) {
-        tbody.innerHTML = `
-            <tr>
-                <td colspan="7" class="text-center">
-                    <div class="no-data-message">
-                        <i class="fas fa-info-circle"></i>
-                        <p>No se encontraron clientes con los criterios de búsqueda</p>
-                    </div>
-                </td>
-            </tr>
-        `;
-    }
-}
+// ===== EVENT LISTENERS =====
 
-/**
- * Mostrar error en detalles
- */
-function mostrarErrorDetalles(mensaje) {
-    const modalBody = document.querySelector('#asesorModal .modal-body');
-    if (modalBody) {
-        modalBody.innerHTML = `
-            <div class="error-message">
-                <i class="fas fa-exclamation-triangle" style="color: #dc3545; font-size: 3em; margin-bottom: 15px;"></i>
-                <h4>Error al cargar detalles</h4>
-                <p>${mensaje}</p>
-            </div>
-        `;
-    }
-}
-
-/**
- * Cerrar modal del asesor
- */
-function cerrarModalAsesor() {
-    const modal = document.getElementById('asesorModal');
-    if (modal) {
-        modal.style.display = 'none';
-        
-        // Limpiar variables
-        asesorActual = null;
-        clientesActuales = [];
-        clientesFiltrados = [];
-    }
-}
-
-/**
- * Cerrar modal de transferencia
- */
-function cerrarModalTransferir() {
-    const modal = document.getElementById('transferirModal');
-    if (modal) {
-        modal.style.display = 'none';
-        
-        // Limpiar campos
-        document.getElementById('nuevoAsesor').value = '';
-        document.getElementById('motivoTransferir').value = '';
-        clienteTransferirActual = null; // Limpiar el cliente transferido
-    }
-}
-
+document.addEventListener('DOMContentLoaded', function() {
 // Cerrar modales al hacer clic fuera de ellos
 window.onclick = function(event) {
-    const asesorModal = document.getElementById('asesorModal');
-    const transferirModal = document.getElementById('transferirModal');
-    
-    if (event.target === asesorModal) {
-        cerrarModalAsesor();
-    }
-    
-    if (event.target === transferirModal) {
-        cerrarModalTransferir();
-    }
+        if (event.target.classList.contains('modal')) {
+            event.target.style.display = 'none';
+        }
 }
 
 // Cerrar modales con ESC
 document.addEventListener('keydown', function(event) {
     if (event.key === 'Escape') {
-        cerrarModalAsesor();
-        cerrarModalTransferir();
+            document.querySelectorAll('.modal').forEach(modal => {
+                modal.style.display = 'none';
+            });
     }
+    });
 });
-
-console.log('Script del dashboard del coordinador cargado correctamente');

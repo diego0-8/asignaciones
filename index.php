@@ -43,6 +43,18 @@ switch ($action) {
         $controller->dashboard();
         break;
         
+    case 'admin_usuarios':
+        verificarSesion('administrador');
+        $controller = new AdminController();
+        $controller->usuarios();
+        break;
+        
+    case 'admin_asignaciones':
+        verificarSesion('administrador');
+        $controller = new AdminController();
+        $controller->asignaciones();
+        break;
+        
     // ===== ACCIONES AJAX DEL ADMINISTRADOR =====
     case 'create_usuario':
         verificarSesion('administrador');
@@ -135,37 +147,32 @@ switch ($action) {
         $controller->transferirCliente();
         break;
         
-    case 'coordinador_cerrar_sesion':
+    case 'coordinador_liberar_cliente':
         verificarSesion('coordinador');
         $controller = new CoordinadorController();
-        $controller->cerrarSesion();
+        $controller->liberarCliente();
         break;
         
-    case 'coordinador_obtener_detalles_asesor':
+    case 'coordinador_liberar_todos_clientes_asesor':
         verificarSesion('coordinador');
         $controller = new CoordinadorController();
-        $controller->obtenerDetallesAsesor();
+        $controller->liberarTodosClientesAsesor();
         break;
         
-    case 'coordinador_obtener_asesores_disponibles':
+    case 'coordinador_get_clientes_asesor':
         verificarSesion('coordinador');
         $controller = new CoordinadorController();
-        $controller->obtenerAsesoresDisponibles();
+        $controller->getClientesAsesor();
         break;
         
-    case 'coordinador_transferir_cliente':
+    case 'coordinador_exportar_gestion':
         verificarSesion('coordinador');
         $controller = new CoordinadorController();
-        $controller->transferirCliente();
-        break;
-        
-    case 'coordinador_descargar_archivos':
-        verificarSesion('coordinador');
-        $controller = new CoordinadorController();
-        $controller->descargarArchivos();
+        $controller->exportarGestionCSV();
         break;
         
     case 'coordinador_cerrar_sesion':
+        verificarSesion('coordinador');
         $controller = new CoordinadorController();
         $controller->cerrarSesion();
         break;

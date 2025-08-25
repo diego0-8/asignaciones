@@ -16,9 +16,9 @@
         <div class="sidebar-logo">IPS CRM</div>
         <nav class="sidebar-nav">
             <ul>
-                <li class="active"><i class="fas fa-th-large"></i> Dashboard</li>
+                <li class="active" onclick="window.location.href='index.php?action=dashboard'"><i class="fas fa-th-large"></i> Dashboard</li>
                 <li onclick="window.location.href='index.php?action=admin_usuarios'"><i class="fas fa-users"></i> Usuarios</li>
-                <li onclick="window.location.href='index.php?action=admin_asignar_asesores'"><i class="fas fa-user-friends"></i> Asignar</li>
+                <li onclick="window.location.href='index.php?action=admin_asignaciones'"><i class="fas fa-user-friends"></i> Asignaciones</li>
             </ul>
         </nav>
         
