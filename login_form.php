@@ -8,123 +8,16 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
-    <style>
-        body {
-            font-family: 'Inter', sans-serif;
-            background-color: #0f172a; /* Fondo azul oscuro, igual que la barra lateral del dashboard */
-            color: #ffffff;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            min-height: 100vh;
-            margin: 0;
-            padding: 0;
-            overflow: hidden; /* Evita el scroll */
-        }
-
-        .login-container {
-            background-color: #1e293b; /* Un tono más claro que el fondo para el contenedor */
-            border-radius: 1rem;
-            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
-            padding: 2.5rem;
-            width: 90%;
-            max-width: 400px;
-            text-align: center;
-        }
-
-        .login-container h2 {
-            font-size: 1.875rem;
-            font-weight: 700;
-            margin-bottom: 2rem;
-            color: #ffffff;
-        }
-
-        .input-group {
-            margin-bottom: 1.5rem;
-            text-align: left;
-        }
-
-        .input-group label {
-            display: block;
-            font-size: 0.875rem;
-            font-weight: 500;
-            color: #cbd5e1;
-            margin-bottom: 0.5rem;
-        }
-
-        .input-group input {
-            width: 100%;
-            padding: 0.75rem;
-            border-radius: 0.5rem;
-            border: 1px solid #475569;
-            background-color: #334155;
-            color: #ffffff;
-            font-size: 1rem;
-            transition: border-color 0.2s;
-            box-sizing: border-box; /* Asegura que el padding no afecte el ancho */
-        }
-        
-        .input-group input:focus {
-            outline: none;
-            border-color: #2563eb;
-        }
-        
-        .login-button {
-            width: 100%;
-            padding: 0.75rem;
-            background-color: #2563eb; /* Color azul del dashboard */
-            color: #ffffff;
-            border: none;
-            border-radius: 0.5rem;
-            font-size: 1rem;
-            font-weight: 600;
-            cursor: pointer;
-            transition: background-color 0.2s;
-        }
-
-        .login-button:hover {
-            background-color: #1d4ed8;
-        }
-        
-        .forgot-password {
-            margin-top: 1rem;
-            text-align: center;
-        }
-
-        .forgot-password a {
-            font-size: 0.875rem;
-            color: #6b7280;
-            text-decoration: none;
-            transition: color 0.2s;
-        }
-        
-        .forgot-password a:hover {
-            color: #9ca3af;
-        }
-
-        .alert {
-            border-radius: 0.5rem;
-            border: none;
-            padding: 0.75rem;
-            margin-bottom: 1rem;
-            text-align: left;
-        }
-
-        .alert-danger {
-            background-color: #dc2626;
-            color: #ffffff;
-        }
-
-        .alert-success {
-            background-color: #059669;
-            color: #ffffff;
-        }
-    </style>
+    <link rel="stylesheet" href="assets/css/login.css">
 </head>
 <body>
 
-    <div class="login-container">
-        <h2>Acceso para Asignación de Citas IPS</h2>
+        <div class="login-container">
+        <div class="login-header">
+            <i class="fas fa-hospital-user" style="font-size: 3rem; color: #3b82f6; margin-bottom: 1rem;"></i>
+            <h2>Acceso para Asignación de Citas IPS</h2>
+            <p style="color: #94a3b8; margin-bottom: 2rem; font-size: 0.95rem;">Sistema de Gestión de Citas Médicas</p>
+        </div>
         
         <?php if (isset($error)): ?>
             <div class="alert alert-danger" role="alert">
@@ -133,19 +26,39 @@
             </div>
         <?php endif; ?>
         
-        <form method="POST" action="index.php?action=login">
+        <form method="POST" action="index.php?action=login" class="login-form">
             <div class="input-group">
-                <label for="username">Nombre de usuario</label>
+                <label for="username">
+                    <i class="fas fa-user"></i>
+                    Nombre de usuario
+                </label>
                 <input type="text" id="username" name="usuario" placeholder="Ingresa tu nombre de usuario" required value="<?php echo htmlspecialchars($_POST['usuario'] ?? ''); ?>">
             </div>
             <div class="input-group">
-                <label for="password">Contraseña</label>
+                <label for="password">
+                    <i class="fas fa-lock"></i>
+                    Contraseña
+                </label>
                 <input type="password" id="password" name="contrasena" placeholder="Ingresa tu contraseña" required>
             </div>
-            <button type="submit" class="login-button">Iniciar sesión</button>
+            <button type="submit" class="login-button">
+                <i class="fas fa-sign-in-alt"></i>
+                Iniciar sesión
+            </button>
         </form>
+        
         <div class="forgot-password">
-            <a href="#">¿Olvidaste tu contraseña?</a>
+            <a href="#">
+                <i class="fas fa-question-circle"></i>
+                ¿Olvidaste tu contraseña?
+            </a>
+        </div>
+        
+        <div class="login-footer">
+            <p style="color: #64748b; font-size: 0.8rem; margin-top: 2rem;">
+                <i class="fas fa-shield-alt"></i>
+                Sistema seguro y confidencial
+            </p>
         </div>
     </div>
 

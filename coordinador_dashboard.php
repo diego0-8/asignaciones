@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Dashboard Coordinador</title>
     <link rel="stylesheet" href="assets/css/admin-dashboard.css">
+    <link rel="stylesheet" href="assets/css/coordinador-dashboard.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
 </head>
 <body>
@@ -98,50 +99,66 @@
                 </div>
             </div>
 
-            <!-- Asesores Cards -->
+            <!-- Lista de Asesores -->
             <div class="asesores-section">
                 <h2>Estado de Asesores</h2>
-                <div class="asesores-grid">
+                <div class="asesores-table-container">
                     <?php if (empty($estadisticas)): ?>
                         <div class="no-data-message">
                             <i class="fas fa-info-circle"></i>
                             <p>No hay asesores asignados actualmente.</p>
                         </div>
                     <?php else: ?>
-                        <?php foreach ($estadisticas as $asesor): ?>
-                            <div class="asesor-card">
-                                <div class="asesor-header">
-                                    <h3><?php echo htmlspecialchars($asesor['asesor_nombre']); ?></h3>
-                                    <span class="asesor-status active">Activo</span>
-                                </div>
-                                
-                                <div class="asesor-stats">
-                                    <div class="stat-item">
-                                        <span class="stat-label">Total Clientes:</span>
-                                        <span class="stat-value"><?php echo $asesor['total_clientes']; ?></span>
-                                    </div>
-                                    <div class="stat-item">
-                                        <span class="stat-label">Llamados:</span>
-                                        <span class="stat-value"><?php echo $asesor['clientes_llamados']; ?></span>
-                                    </div>
-                                    <div class="stat-item">
-                                        <span class="stat-label">Pendientes:</span>
-                                        <span class="stat-value"><?php echo $asesor['clientes_pendientes']; ?></span>
-                                    </div>
-                                </div>
-                                
-                                <div class="progress-bar">
-                                    <div class="progress-fill" style="width: <?php echo $asesor['porcentaje_progreso']; ?>%"></div>
-                                </div>
-                                <span class="progress-text"><?php echo $asesor['porcentaje_progreso']; ?>% Completado</span>
-                                
-                                <div class="asesor-actions">
-                                    <button class="btn btn-primary btn-sm" onclick="abrirModalAsesor(<?php echo $asesor['asesor_id']; ?>)">
-                                        <i class="fas fa-eye"></i> Detalles
-                                    </button>
-                                </div>
-                            </div>
-                        <?php endforeach; ?>
+                        <table class="asesores-table">
+                            <thead>
+                                <tr>
+                                    <th>Asesor</th>
+                                    <th>Estado</th>
+                                    <th>Total Clientes</th>
+                                    <th>Llamados</th>
+                                    <th>Pendientes</th>
+                                    <th>Progreso</th>
+                                    <th>Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <?php foreach ($estadisticas as $asesor): ?>
+                                    <tr class="asesor-row">
+                                        <td class="asesor-info">
+                                            <div class="asesor-avatar-small">
+                                                <i class="fas fa-user-tie"></i>
+                                            </div>
+                                            <div class="asesor-details">
+                                                <strong><?php echo htmlspecialchars($asesor['asesor_nombre']); ?></strong>
+                                            </div>
+                                        </td>
+                                        <td>
+                                            <span class="asesor-status-badge active">Activo</span>
+                                        </td>
+                                        <td class="stat-value">
+                                            <span class="stat-number"><?php echo number_format($asesor['total_clientes']); ?></span>
+                                        </td>
+                                        <td class="stat-value">
+                                            <span class="stat-number success"><?php echo number_format($asesor['clientes_llamados']); ?></span>
+                                        </td>
+                                        <td class="stat-value">
+                                            <span class="stat-number warning"><?php echo number_format($asesor['clientes_pendientes']); ?></span>
+                                        </td>
+                                        <td class="progreso-cell">
+                                            <div class="progress-bar-compact">
+                                                <div class="progress-fill-compact" style="width: <?php echo $asesor['porcentaje_progreso']; ?>%"></div>
+                                            </div>
+                                            <span class="progress-text-compact"><?php echo $asesor['porcentaje_progreso']; ?>%</span>
+                                        </td>
+                                        <td class="acciones-cell">
+                                            <button class="btn btn-primary btn-sm" onclick="abrirModalAsesor(<?php echo $asesor['asesor_id']; ?>)" title="Ver Detalles">
+                                                <i class="fas fa-eye"></i> Detalles
+                                            </button>
+                                        </td>
+                                    </tr>
+                                <?php endforeach; ?>
+                            </tbody>
+                        </table>
                     <?php endif; ?>
                 </div>
             </div>
@@ -224,30 +241,24 @@
                         </button>
                     </div>
                     
-                    <div class="filters-container">
-                        <select id="filterTipificacion" onchange="filtrarPorTipificacion()" class="filter-select">
-                            <option value="">📋 Todas las tipificaciones</option>
-                            <option value="asignacion_cita">📅 Asignación de Citas</option>
-                            <option value="volver_llamar">📞 Volver a Llamar</option>
-                            <option value="fuera_ciudad">🌍 Fuera de Ciudad</option>
-                            <option value="no_interesa">❌ No Interesa</option>
-                            <option value="contactado">✅ Contactado</option>
-                            <option value="no_contactado">📵 No Contactado</option>
-                        </select>
-                        
-                        <select id="filterEstado" onchange="filtrarPorEstado()" class="filter-select">
-                            <option value="">🏷️ Todos los estados</option>
-                            <option value="no_gestionado">⏳ No Gestionado</option>
-                            <option value="gestionado">✅ Gestionado</option>
-                            <option value="Cita Programada">📅 Cita Programada</option>
-                            <option value="En Proceso">🔄 En Proceso</option>
-                        </select>
+                    <!-- Contenedor para filtros jerárquicos -->
+                    <div id="filtrosContainer" class="filtros-container">
+                        <!-- Los filtros se crearán dinámicamente con JavaScript -->
                     </div>
                 </div>
 
                 <!-- Lista de Clientes -->
                 <div class="clientes-section">
-                    <h4>📋 Clientes del Asesor</h4>
+                    <div class="clientes-header">
+                        <h4>📋 Clientes del Asesor</h4>
+                        <div id="contadorFiltros" class="contador-filtros">
+                            <span class="contador-info">
+                                <i class="fas fa-filter"></i> 
+                                Mostrando todos los clientes
+                            </span>
+                        </div>
+                    </div>
+                    
                     <div class="clientes-table-container">
                         <table class="clientes-table" id="clientesTable">
                             <thead>
@@ -266,9 +277,13 @@
                             </tbody>
                         </table>
                     </div>
+                    
                     <div id="noClientesMessage" class="no-data-message" style="display: none;">
                         <i class="fas fa-info-circle"></i>
                         <p>No se encontraron clientes con los filtros aplicados.</p>
+                        <button class="btn btn-outline-primary btn-sm" onclick="limpiarFiltros()">
+                            <i class="fas fa-times"></i> Limpiar Filtros
+                        </button>
                     </div>
                 </div>
             </div>
@@ -312,6 +327,6 @@
         </div>
     </div>
 
-    <script src="assets/js/coordinador-dashboard.js"></script>
+    <script src="assets/js/coordinador-dashboard-fixed.js"></script>
 </body>
 </html>

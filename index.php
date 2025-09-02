@@ -12,15 +12,15 @@ error_reporting(E_ALL);
 ini_set('display_errors', 1);
 
 // Incluir configuración
-require_once 'config.php';
+require_once __DIR__ . '/config.php';
 
 // Incluir modelos y controladores
-require_once 'models/Database.php';
-require_once 'models/UsuarioModel.php';
-require_once 'models/ClienteModel.php';
-require_once 'controllers/AdminController.php';
-require_once 'controllers/CoordinadorController.php';
-require_once 'controllers/AsesorController.php';
+require_once __DIR__ . '/models/Database.php';
+require_once __DIR__ . '/models/UsuarioModel.php';
+require_once __DIR__ . '/models/ClienteModel.php';
+require_once __DIR__ . '/controllers/AdminController.php';
+require_once __DIR__ . '/controllers/CoordinadorController.php';
+require_once __DIR__ . '/controllers/AsesorController.php';
 
 // Obtener acción
 $action = $_GET['action'] ?? 'login';
@@ -309,7 +309,7 @@ function mostrarLogin() {
     }
     
     // Mostrar formulario de login
-    include 'views/login_form.php';
+    include __DIR__ . '/views/login_form.php';
 }
 
 /**

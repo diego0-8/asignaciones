@@ -166,7 +166,22 @@
     </div>
 
     <!-- Alert Container -->
-    <div id="alertContainer" class="alert-container"></div>
+    <div id="alertContainer" class="alert-container">
+        <?php if (isset($_GET['error']) && $_GET['error'] === 'no_data'): ?>
+            <div class="alert alert-error">
+                <i class="fas fa-exclamation-circle"></i>
+                <span>
+                    <strong>No hay gestiones para mostrar</strong><br>
+                    No se encontraron gestiones de asesores en el rango de fechas seleccionado 
+                    (<?php echo htmlspecialchars($_GET['fecha_inicio'] ?? ''); ?> a <?php echo htmlspecialchars($_GET['fecha_fin'] ?? ''); ?>).
+                    <br><small>Intenta con un rango de fechas más amplio o verifica que los asesores hayan realizado gestiones en ese período.</small>
+                </span>
+                <button type="button" class="alert-close" onclick="this.parentElement.remove()">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+        <?php endif; ?>
+    </div>
 
     <script>
         function setQuickDate(tipo) {

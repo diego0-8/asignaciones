@@ -2137,8 +2137,33 @@ body {
     box-shadow: 0 4px 15px rgba(0,0,0,0.2);
     display: flex;
     justify-content: space-between;
-    align-items: center;
+    align-items: flex-start;
     animation: slideIn 0.3s ease;
+    max-width: 450px;
+    line-height: 1.5;
+}
+
+.alert i {
+    margin-right: 0.75rem;
+    font-size: 1.2rem;
+    margin-top: 0.1rem;
+}
+
+.alert span {
+    flex: 1;
+    margin-right: 0.5rem;
+}
+
+.alert strong {
+    color: #333;
+    font-weight: 600;
+}
+
+.alert small {
+    color: #666;
+    font-size: 0.85rem;
+    margin-top: 0.25rem;
+    display: block;
 }
 
 .alert-success {
@@ -2268,7 +2293,7 @@ body {
     flex: 1;
     padding: 1.5rem;
     background: #f8f9fa;
-    overflow: hidden;
+    overflow: auto;
     height: 100vh;
 }
 
@@ -2354,7 +2379,7 @@ body {
     border-radius: 12px;
     padding: 1.5rem;
     margin-bottom: 1.5rem;
-    box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+    color: #007bff;
 }
 
 .asesores-section h2 {

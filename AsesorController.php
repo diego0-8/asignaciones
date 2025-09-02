@@ -4,7 +4,7 @@
  * Maneja todas las operaciones relacionadas con el rol de asesor
  */
 
-require_once 'models/Database.php';
+require_once __DIR__ . '/../models/Database.php';
 
 class AsesorController {
     private $db;
@@ -26,8 +26,11 @@ class AsesorController {
         // Obtener estadísticas del asesor
         $estadisticas = $this->getEstadisticasAsesor($_SESSION['user_id']);
         
+        // Obtener actividad reciente (últimas 3 gestiones)
+        $actividadReciente = $this->getActividadReciente($_SESSION['user_id'], 3);
+        
         // Incluir la vista
-        include 'views/asesor_dashboard.php';
+        include __DIR__ . '/../views/asesor_dashboard.php';
     }
     
     /**
@@ -108,7 +111,7 @@ class AsesorController {
         $params_with_pagination = array_merge($params, [$per_page, $offset]);
         $clientes = $this->db->fetchAll($sql, $params_with_pagination);
         
-        include 'views/asesor_clientes.php';
+        include __DIR__ . '/../views/asesor_clientes.php';
     }
     
     /**
@@ -161,7 +164,7 @@ class AsesorController {
         $sql = "SELECT * FROM citas WHERE cliente_id = ? ORDER BY fecha_cita DESC";
         $citas = $this->db->fetchAll($sql, [$clienteId]);
         
-        include 'views/asesor_gestionar_cliente.php';
+        include __DIR__ . '/../views/asesor_gestionar_cliente.php';
     }
     
     /**
@@ -222,7 +225,7 @@ class AsesorController {
         $params_with_pagination = array_merge($params, [$per_page, $offset]);
         $citas = $this->db->fetchAll($sql, $params_with_pagination);
         
-        include 'views/asesor_citas.php';
+        include __DIR__ . '/../views/asesor_citas.php';
     }
     
     /**
@@ -238,14 +241,188 @@ class AsesorController {
      * Obtener estadísticas del asesor
      */
     private function getEstadisticasAsesor($asesorId) {
-        $sql = "SELECT 
-                    COUNT(CASE WHEN c.estado_gestion = 'En Proceso' THEN 1 END) as clientes_gestionados,
-                    COUNT(CASE WHEN c.estado_gestion = 'Disponible' THEN 1 END) as clientes_pendientes,
-                    COUNT(CASE WHEN c.estado_gestion = 'Cita Programada' THEN 1 END) as citas_registradas
-                FROM clientes c 
-                WHERE c.asesor_id = ?";
-        
-        return $this->db->fetch($sql, [$asesorId]);
+        try {
+            error_log("=== INICIO getEstadisticasAsesor para asesor ID: " . $asesorId . " ===");
+            
+            // Verificar que el asesor existe
+            $checkAsesor = "SELECT id, nombre_completo, usuario FROM usuarios WHERE id = ? AND rol = 'asesor'";
+            $asesor = $this->db->fetch($checkAsesor, [$asesorId]);
+            
+            if (!$asesor) {
+                error_log("Error: Asesor ID " . $asesorId . " no existe o no es asesor");
+                return $this->getEstadisticasPorDefecto();
+            }
+            
+            error_log("Asesor encontrado: " . $asesor['nombre_completo'] . " (" . $asesor['usuario'] . ")");
+            
+            // Estadísticas de clientes por estado
+            $sql_clientes = "SELECT 
+                                COUNT(CASE WHEN c.id IN (
+                                    SELECT DISTINCT cliente_id 
+                                    FROM historial_gestion 
+                                    WHERE asesor_id = ?
+                                ) THEN 1 END) as clientes_gestionados,
+                                COUNT(CASE WHEN c.id NOT IN (
+                                    SELECT DISTINCT cliente_id 
+                                    FROM historial_gestion 
+                                    WHERE asesor_id = ?
+                                ) THEN 1 END) as clientes_pendientes,
+                                COUNT(CASE WHEN c.estado_gestion = 'Cita Programada' THEN 1 END) as citas_registradas,
+                                COUNT(CASE WHEN c.estado_gestion = 'Cita Completada' THEN 1 END) as citas_completadas,
+                                COUNT(*) as total_clientes
+                            FROM clientes c 
+                            WHERE c.asesor_id = ?";
+            
+            error_log("Ejecutando consulta de clientes: " . $sql_clientes);
+            $estadisticas_clientes = $this->db->fetch($sql_clientes, [$asesorId, $asesorId, $asesorId]);
+            
+            if ($estadisticas_clientes === false) {
+                error_log("Error al obtener estadísticas de clientes, usando valores por defecto");
+                $estadisticas_clientes = [
+                    'clientes_gestionados' => 0,
+                    'clientes_pendientes' => 0,
+                    'citas_registradas' => 0,
+                    'citas_completadas' => 0,
+                    'total_clientes' => 0
+                ];
+            } else {
+                error_log("Estadísticas de clientes obtenidas: " . json_encode($estadisticas_clientes));
+            }
+            
+            // Estadísticas de gestiones del día (solo si la tabla existe)
+            $estadisticas_gestiones = [
+                'gestiones_hoy' => 0,
+                'citas_agendadas_hoy' => 0,
+                'volver_llamar_hoy' => 0
+            ];
+            
+            try {
+                $checkTable = "SHOW TABLES LIKE 'historial_gestion'";
+                $tableExists = $this->db->fetch($checkTable);
+                
+                if ($tableExists) {
+                    error_log("Tabla historial_gestion existe, obteniendo estadísticas del día");
+                    
+                    $sql_gestiones_hoy = "SELECT 
+                                            COUNT(*) as gestiones_hoy,
+                                            COUNT(CASE WHEN tipo_gestion = 'asignacion_cita' THEN 1 END) as citas_agendadas_hoy,
+                                            COUNT(CASE WHEN tipo_gestion = 'volver_llamar' THEN 1 END) as volver_llamar_hoy
+                                          FROM historial_gestion 
+                                          WHERE asesor_id = ? 
+                                          AND DATE(fecha_gestion) = CURDATE()";
+                    
+                    error_log("Ejecutando consulta de gestiones del día: " . $sql_gestiones_hoy);
+                    $resultado_gestiones = $this->db->fetch($sql_gestiones_hoy, [$asesorId]);
+                    
+                    if ($resultado_gestiones !== false) {
+                        $estadisticas_gestiones = $resultado_gestiones;
+                        error_log("Estadísticas de gestiones del día obtenidas: " . json_encode($estadisticas_gestiones));
+                    } else {
+                        error_log("Error al obtener estadísticas de gestiones del día");
+                    }
+                } else {
+                    error_log("Tabla historial_gestion no existe");
+                }
+            } catch (Exception $e) {
+                error_log("Error al obtener estadísticas de gestiones: " . $e->getMessage());
+                // Continuar con valores por defecto
+            }
+            
+            // Combinar estadísticas
+            $estadisticas_finales = array_merge($estadisticas_clientes, $estadisticas_gestiones);
+            error_log("Estadísticas finales combinadas: " . json_encode($estadisticas_finales));
+            
+            return $estadisticas_finales;
+            
+        } catch (Exception $e) {
+            error_log("Error en getEstadisticasAsesor: " . $e->getMessage());
+            error_log("Stack trace: " . $e->getTraceAsString());
+            // Retornar estadísticas por defecto en caso de error
+            return $this->getEstadisticasPorDefecto();
+        }
+    }
+    
+    /**
+     * Obtener estadísticas por defecto
+     */
+    private function getEstadisticasPorDefecto() {
+        return [
+            'clientes_gestionados' => 0,
+            'clientes_pendientes' => 0,
+            'citas_registradas' => 0,
+            'citas_completadas' => 0,
+            'total_clientes' => 0,
+            'gestiones_hoy' => 0,
+            'citas_agendadas_hoy' => 0,
+            'volver_llamar_hoy' => 0
+        ];
+    }
+    
+    /**
+     * Obtener actividad reciente del asesor (últimas gestiones)
+     */
+    private function getActividadReciente($asesorId, $limite = 3) {
+        try {
+            error_log("=== INICIO getActividadReciente para asesor ID: " . $asesorId . " (límite: " . $limite . ") ===");
+            
+            // Verificar que el asesor existe
+            $checkAsesor = "SELECT id, nombre_completo, usuario FROM usuarios WHERE id = ? AND rol = 'asesor'";
+            $asesor = $this->db->fetch($checkAsesor, [$asesorId]);
+            
+            if (!$asesor) {
+                error_log("Error: Asesor ID " . $asesorId . " no existe o no es asesor");
+                return [];
+            }
+            
+            error_log("Asesor encontrado: " . $asesor['nombre_completo'] . " (" . $asesor['usuario'] . ")");
+            
+            // Verificar si la tabla historial_gestion existe
+            $checkTable = "SHOW TABLES LIKE 'historial_gestion'";
+            $tableExists = $this->db->fetch($checkTable);
+            
+            if (!$tableExists) {
+                error_log("Tabla historial_gestion no existe, retornando array vacío");
+                return [];
+            }
+            
+            error_log("Tabla historial_gestion existe, obteniendo actividad reciente");
+            
+            $sql = "SELECT 
+                        hg.id,
+                        hg.tipo_gestion,
+                        hg.tipo_contacto,
+                        hg.observaciones,
+                        hg.fecha_gestion,
+                        hg.proxima_accion,
+                        hg.fecha_proxima_accion,
+                        c.nombre_completo as cliente_nombre,
+                        c.cedula as cliente_cedula
+                    FROM historial_gestion hg
+                    INNER JOIN clientes c ON hg.cliente_id = c.id
+                    WHERE hg.asesor_id = ?
+                    ORDER BY hg.fecha_gestion DESC
+                    LIMIT ?";
+            
+            error_log("Ejecutando consulta de actividad reciente: " . $sql);
+            $resultado = $this->db->fetchAll($sql, [$asesorId, $limite]);
+            
+            if ($resultado === false) {
+                error_log("Error al obtener actividad reciente para asesor ID: " . $asesorId);
+                return [];
+            }
+            
+            error_log("Actividad reciente obtenida: " . count($resultado) . " registros");
+            if (count($resultado) > 0) {
+                error_log("Primera gestión: " . json_encode($resultado[0]));
+            }
+            
+            return $resultado;
+            
+        } catch (Exception $e) {
+            error_log("Error en getActividadReciente: " . $e->getMessage());
+            error_log("Stack trace: " . $e->getTraceAsString());
+            return [];
+        }
     }
     
     /**
@@ -301,8 +478,8 @@ class AsesorController {
         
         $asesorId = $_SESSION['user_id'];
         $clienteId = $_POST['cliente_id'] ?? null;
-        $tipoContacto = $_POST['tipo_contacto'] ?? null;
-        $tipoGestion = $_POST['tipo_gestion'] ?? null;
+        $tipoContacto = $_POST['tipo_contacto'] ?? null; // Canal de contacto (Llamada, WhatsApp, etc.)
+        $tipoGestion = $_POST['tipo_gestion'] ?? null;   // Acción de negocio (asignacion_cita, volver_llamar, etc.)
         $observaciones = $_POST['observaciones'] ?? null;
         $submitToken = $_POST['submit_token'] ?? null;
         
@@ -358,14 +535,72 @@ class AsesorController {
             error_log("Iniciando transacción...");
             $this->db->beginTransaction();
             
-            // Insertar en historial_gestion
+            // Mapear valores a columnas existentes del esquema
+            // - tipo_contacto y tipo_gestion deben ser de los ENUM definidos
+            $tipoGestion = $tipoGestion ?: 'no_contactado';
+            $tipoContacto = $tipoContacto ?: 'no_contactado';
+
+            // Determinar resultado estándar del esquema
+            $resultado = 'No Contactado';
+            if ($tipoGestion === 'asignacion_cita') {
+                $resultado = 'Agendado';
+            } elseif ($tipoGestion === 'volver_llamar') {
+                $resultado = 'Contactado';
+            } elseif ($tipoGestion === 'fuera_ciudad' || $tipoGestion === 'no_interesa') {
+                $resultado = 'Rechazado';
+            } elseif ($tipoContacto !== 'no_contactado') {
+                $resultado = 'Contactado';
+            }
+
+            // Insertar en historial_gestion con todos los campos disponibles
             $sql = "INSERT INTO historial_gestion (
                         cliente_id, asesor_id, tipo_contacto, tipo_gestion, 
-                        observaciones, resultado
-                    ) VALUES (?, ?, ?, ?, ?, ?)";
-            
-            $resultado = $tipoGestion ?: $tipoContacto;
-            $params = [$clienteId, $asesorId, $tipoContacto, $tipoGestion, $observaciones, $resultado];
+                        observaciones, resultado, fecha_cita, hora_cita, lugar_cita,
+                        fecha_proximo_contacto, hora_proximo_contacto, edad_paciente,
+                        ocupacion, patologia, regimen_salud
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+
+            // Preparar datos específicos según el tipo de gestión
+            $fechaCita = null;
+            $horaCita = null;
+            $lugarCita = null;
+            $fechaProximoContacto = null;
+            $horaProximoContacto = null;
+            $edadPaciente = null;
+            $ocupacion = null;
+            $patologia = null;
+            $regimenSalud = null;
+
+            if ($tipoGestion === 'asignacion_cita') {
+                $fechaCita = $_POST['fecha_cita'] ?? null;
+                $horaCita = $_POST['hora_cita'] ?? null;
+                $lugarCita = $_POST['lugar_cita'] ?? null;
+                $edadPaciente = $_POST['edad_paciente'] ?? null;
+                $ocupacion = $_POST['ocupacion'] ?? null;
+                $patologia = $_POST['patologia'] ?? null;
+                $regimenSalud = $_POST['regimen_salud'] ?? null;
+            } elseif ($tipoGestion === 'volver_llamar') {
+                $fechaProximoContacto = $_POST['fecha_proximo_contacto'] ?? null;
+                $horaProximoContacto = $_POST['hora_proximo_contacto'] ?? null;
+            }
+
+            $params = [
+                $clienteId,
+                $asesorId,
+                $tipoContacto,     // tipo_contacto
+                $tipoGestion,      // tipo_gestion
+                $observaciones,
+                $resultado,
+                $fechaCita,
+                $horaCita,
+                $lugarCita,
+                $fechaProximoContacto,
+                $horaProximoContacto,
+                $edadPaciente,
+                $ocupacion,
+                $patologia,
+                $regimenSalud
+            ];
             
             error_log("Ejecutando SQL: " . $sql);
             error_log("Parámetros: " . print_r($params, true));
@@ -379,74 +614,64 @@ class AsesorController {
             $gestionId = $this->db->getConnection()->lastInsertId();
             error_log("Gestión insertada con ID: " . $gestionId);
             
-            // Si es asignación de cita, insertar en tabla citas
+            // Si es asignación de cita, insertar en tabla citas (alineado a esquema)
             if ($tipoGestion === 'asignacion_cita') {
-                $fechaCita = $_POST['fecha_cita'] ?? null;
+                $fechaCitaFecha = $_POST['fecha_cita'] ?? null; // puede venir como 'YYYY-MM-DD' o 'YYYY-MM-DD HH:MM'
                 $horaCita = $_POST['hora_cita'] ?? null;
-                $lugarCita = $_POST['lugar_cita'] ?? null;
-                
-                // Validar que todos los campos de cita estén presentes
-                if (!$fechaCita || !$horaCita || !$lugarCita) {
-                    throw new Exception("Para asignar una cita, todos los campos (fecha, hora y lugar) son obligatorios");
+                $tipoCita = $_POST['tipo_cita'] ?? 'Consulta';
+
+                if (!$fechaCitaFecha) {
+                    throw new Exception("Para asignar una cita, la fecha es obligatoria");
                 }
-                
-                if ($fechaCita && $horaCita && $lugarCita) {
-                    $sql = "INSERT INTO citas (
-                                cliente_id, asesor_id, fecha_cita, hora_cita, 
-                                lugar_cita, estado, fecha_creacion
-                            ) VALUES (?, ?, ?, ?, ?, 'Programada', NOW())";
-                    
-                    $result = $this->db->query($sql, [
-                        $clienteId, $asesorId, $fechaCita, $horaCita, $lugarCita
-                    ]);
-                    
-                    if (!$result) {
-                        throw new Exception("Error al insertar cita");
-                    }
-                    
-                    // Actualizar estado del cliente
-                    $sql = "UPDATE clientes SET estado_gestion = 'Cita Programada' WHERE id = ?";
-                    $this->db->query($sql, [$clienteId]);
-                    error_log("Cita programada y estado del cliente actualizado");
+
+                // Construir DATETIME
+                $fechaCita = $fechaCitaFecha;
+                if ($fechaCitaFecha && $horaCita && strlen($fechaCitaFecha) === 10) { // YYYY-MM-DD
+                    $fechaCita = $fechaCitaFecha . ' ' . $horaCita;
                 }
+
+                $sql = "INSERT INTO citas (
+                            cliente_id, asesor_id, fecha_cita, tipo_cita, estado, fecha_creacion
+                        ) VALUES (?, ?, ?, ?, 'Programada', NOW())";
+
+                $result = $this->db->query($sql, [
+                    $clienteId, $asesorId, $fechaCita, $tipoCita
+                ]);
+
+                if (!$result) {
+                    throw new Exception("Error al insertar cita");
+                }
+
+                // Actualizar estado del cliente
+                $sql = "UPDATE clientes SET estado_gestion = 'Cita Programada' WHERE id = ?";
+                $this->db->query($sql, [$clienteId]);
+                error_log("Cita programada y estado del cliente actualizado");
             }
             
             // Si es volver a llamar, actualizar fecha de próximo contacto
             if ($tipoGestion === 'volver_llamar') {
-                $fechaProximo = $_POST['fecha_proximo_contacto'] ?? null;
-                $horaProximo = $_POST['hora_proximo_contacto'] ?? null;
-                
-                // Validar que todos los campos de volver a llamar estén presentes
-                if (!$fechaProximo || !$horaProximo) {
-                    throw new Exception("Para marcar volver a llamar, fecha y hora son obligatorios");
-                }
-                
-                if ($fechaProximo && $horaProximo) {
-                    $sql = "UPDATE clientes SET 
-                                estado_gestion = 'En Proceso',
-                                proxima_fecha = ? 
-                            WHERE id = ?";
-                    
-                    $this->db->query($sql, ["$fechaProximo $horaProximo", $clienteId]);
-                    error_log("Cliente marcado para nueva llamada");
-                }
+                // Marcar cliente en proceso
+                $sql = "UPDATE clientes SET estado_gestion = 'En Proceso' WHERE id = ?";
+                $this->db->query($sql, [$clienteId]);
+                error_log("Cliente marcado para volver a llamar");
             }
             
             // Actualizar estado del cliente según el tipo de gestión
             if ($tipoGestion === 'fuera_ciudad' || $tipoGestion === 'no_interesa') {
-                $nuevoEstado = $tipoGestion === 'fuera_ciudad' ? 'Fuera de Ciudad' : 'No Interesado';
-                $sql = "UPDATE clientes SET estado_gestion = ? WHERE id = ?";
-                $this->db->query($sql, [$nuevoEstado, $clienteId]);
-                error_log("Estado del cliente actualizado a: " . $nuevoEstado);
+                // No existen estos estados en el ENUM de clientes; mantener 'En Proceso'
+                $sql = "UPDATE clientes SET estado_gestion = 'En Proceso' WHERE id = ?";
+                $this->db->query($sql, [$clienteId]);
+                error_log("Cliente actualizado como 'En Proceso' por tipificación negativa");
             }
             
             error_log("Confirmando transacción...");
             $this->db->commit();
             
-            // ACTUALIZAR ESTADO DEL CLIENTE A 'GESTIONADO'
-            $sql = "UPDATE clientes SET estado_gestion = 'gestionado' WHERE id = ?";
-            $this->db->query($sql, [$clienteId]);
-            error_log("Estado del cliente actualizado a 'gestionado'");
+            // Mantener estado coherente si no hubo cita/volver_llamar: si hubo contacto, 'En Proceso'
+            if ($tipoGestion !== 'asignacion_cita' && $tipoGestion !== 'volver_llamar') {
+                $sql = "UPDATE clientes SET estado_gestion = 'En Proceso' WHERE id = ?";
+                $this->db->query($sql, [$clienteId]);
+            }
             
             $mensaje = "Gestión guardada correctamente";
             if ($tipoGestion === 'asignacion_cita') {
@@ -593,13 +818,13 @@ class AsesorController {
                         c.telefono,
                         hg.tipo_gestion,
                         hg.fecha_gestion,
-                        hg.proxima_fecha,
+                        hg.fecha_proxima_accion as proxima_fecha,
                         'Volver a Llamar' as tipificacion_nombre
                     FROM clientes c
                     INNER JOIN historial_gestion hg ON c.id = hg.cliente_id
                     WHERE c.asesor_id = ? 
-                    AND hg.tipo_gestion = 'volver_llamar'
-                    AND DATE(hg.proxima_fecha) = ?
+                    AND hg.proxima_accion = 'volver_llamar'
+                    AND DATE(hg.fecha_proxima_accion) = ?
                     AND hg.id = (
                         -- Obtener la gestión más reciente de este cliente
                         SELECT MAX(hg2.id)
@@ -614,7 +839,7 @@ class AsesorController {
                         WHERE hg3.cliente_id = c.id
                         AND hg3.asesor_id = ?
                         AND hg3.fecha_gestion > hg.fecha_gestion
-                        AND hg3.tipo_gestion != 'volver_llamar'
+                        AND (hg3.proxima_accion IS NULL OR hg3.proxima_accion != 'volver_llamar')
                     )
                     ORDER BY hg.proxima_fecha ASC";
             
@@ -654,14 +879,14 @@ class AsesorController {
                         c.telefono,
                         hg.tipo_gestion,
                         hg.fecha_gestion,
-                        hg.proxima_fecha,
+                        hg.fecha_proxima_accion as proxima_fecha,
                         'Volver a Llamar' as tipificacion_nombre,
-                        DATE(hg.fecha_gestion) as fecha_programada
+                        DATE(hg.fecha_proxima_accion) as fecha_programada
                     FROM clientes c
                     INNER JOIN historial_gestion hg ON c.id = hg.cliente_id
                     WHERE c.asesor_id = ? 
-                    AND hg.tipo_gestion = 'volver_llamar'
-                    AND DATE(hg.fecha_gestion) = ?
+                    AND hg.proxima_accion = 'volver_llamar'
+                    AND DATE(hg.fecha_proxima_accion) = ?
                     AND hg.id = (
                         -- Obtener la gestión más reciente de este cliente
                         SELECT MAX(hg2.id)
@@ -676,9 +901,9 @@ class AsesorController {
                         WHERE hg3.cliente_id = c.id
                         AND hg3.asesor_id = ?
                         AND hg3.fecha_gestion > hg.fecha_gestion
-                        AND hg3.tipo_gestion != 'volver_llamar'
+                        AND (hg3.proxima_accion IS NULL OR hg3.proxima_accion != 'volver_llamar')
                     )
-                    ORDER BY hg.fecha_gestion DESC";
+                    ORDER BY hg.fecha_proxima_accion DESC";
             
             $notificaciones = $this->db->fetchAll($sql, [$asesorId, $fecha, $asesorId, $asesorId]);
             

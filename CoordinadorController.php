@@ -4,7 +4,7 @@
  * Maneja todas las operaciones relacionadas con el rol de coordinador
  */
 
-require_once 'models/Database.php';
+require_once __DIR__ . '/../models/Database.php';
 
 class CoordinadorController {
     private $db;
@@ -35,7 +35,7 @@ class CoordinadorController {
         $totalClientesDisponibles = $this->getTotalClientesDisponibles($_SESSION['user_id']);
         
         // Incluir la vista
-        include 'views/coordinador_dashboard.php';
+        include __DIR__ . '/../views/coordinador_dashboard.php';
     }
     
     /**
@@ -51,7 +51,7 @@ class CoordinadorController {
         $coordinadorId = $_SESSION['user_id'];
         $baseExistente = $this->verificarBaseExistente($coordinadorId);
         
-        include 'views/coordinador_cargar_archivo.php';
+        include __DIR__ . '/../views/coordinador_cargar_archivo.php';
     }
     
     /**
@@ -345,7 +345,7 @@ class CoordinadorController {
         // Obtener clientes disponibles
         $clientesDisponibles = $this->getClientesDisponibles($_SESSION['user_id']);
         
-        include 'views/coordinador_tareas_mejorada.php';
+        include __DIR__ . '/../views/coordinador_tareas_mejorada.php';
     }
     
     /**
@@ -365,7 +365,7 @@ class CoordinadorController {
         $totalClientesAsignados = $this->getTotalClientesAsignados($_SESSION['user_id']);
         $totalClientesDisponibles = $this->getTotalClientesDisponibles($_SESSION['user_id']);
         
-        include 'views/coordinador_transferir_clientes.php';
+        include __DIR__ . '/../views/coordinador_transferir_clientes.php';
     }
     
     /**
@@ -377,7 +377,7 @@ class CoordinadorController {
             exit;
         }
         
-        include 'views/coordinador_descargar_archivos.php';
+        include __DIR__ . '/../views/coordinador_descargar_archivos.php';
     }
     
     /**
@@ -534,17 +534,15 @@ class CoordinadorController {
                 $sql = "UPDATE clientes SET asesor_id = ? WHERE id = ?";
                 $this->db->query($sql, [$nuevoAsesorId, $clienteId]);
                 
-                // Registrar la transferencia en historial
-                $sql = "INSERT INTO historial_transferencias (
-                    cliente_id, asesor_anterior_id, asesor_nuevo_id, 
-                    coordinador_id, motivo, fecha_transferencia
-                ) VALUES (?, ?, ?, ?, ?, NOW())";
-                
+                // Registrar la transferencia en historial_asignaciones
+                $sql = "INSERT INTO historial_asignaciones (
+                    cliente_id, asesor_id, coordinador_id, usuario_admin_id, fecha_asignacion, estado, observaciones
+                ) VALUES (?, ?, ?, NULL, NOW(), 'Reasignado', ?)";
+
                 $this->db->query($sql, [
-                    $clienteId, 
-                    $cliente['asesor_id'], 
-                    $nuevoAsesorId, 
-                    $coordinadorId, 
+                    $clienteId,
+                    $nuevoAsesorId,
+                    $coordinadorId,
                     $motivo
                 ]);
                 
@@ -834,7 +832,7 @@ class CoordinadorController {
             
             foreach ($clientesAAsignar as $cliente) {
                 // Asignar cliente al asesor
-                $sql = "UPDATE clientes SET asesor_id = ?, estado_gestion = 'Asignado', fecha_asignacion = NOW() WHERE id = ?";
+                $sql = "UPDATE clientes SET asesor_id = ?, estado_gestion = 'Asignado' WHERE id = ?";
                 $resultado = $this->db->query($sql, [$asesorId, $cliente['id']]);
                 
                 if ($resultado) {
@@ -1063,34 +1061,62 @@ class CoordinadorController {
         }
         
         try {
-            // Obtener datos de gestión de asesores en el rango de fechas
+            // Obtener TODAS las gestiones de asesores en el rango de fechas
+            // Incluyendo múltiples gestiones por cliente
             $sql = "SELECT 
                         u.nombre_completo as asesor,
                         c.nombre_completo as cliente,
                         c.cedula,
                         c.telefono,
-                        hg.tipo_gestion,
-                        hg.fecha_gestion,
+                        c.email,
+                        c.ciudad,
+                        'gestionado' AS tipo_gestion_export,
+                        hg.tipo_contacto,
+                        CASE 
+                            WHEN hg.tipo_contacto = 'no_contactado' THEN 
+                                CASE 
+                                    WHEN hg.observaciones LIKE '%buzon%' OR hg.observaciones LIKE '%buzón%' THEN 'Buzón de voz'
+                                    WHEN hg.observaciones LIKE '%no contest%' OR hg.observaciones LIKE '%no contesta%' OR hg.observaciones LIKE '%no contesto%' THEN 'No contesta'
+                                    WHEN hg.observaciones LIKE '%ocupad%' THEN 'Ocupado'
+                                    WHEN hg.observaciones LIKE '%fuera de servicio%' OR hg.observaciones LIKE '%fuera servicio%' THEN 'Fuera de servicio'
+                                    ELSE 'No Contactado'
+                                END
+                            ELSE 
+                                CASE 
+                                    WHEN hg.tipo_gestion = 'asignacion_cita' THEN 'Cita Asignada'
+                                    WHEN hg.tipo_gestion = 'volver_llamar' THEN 'Volver a Llamar'
+                                    WHEN hg.tipo_gestion = 'fuera_ciudad' THEN 'Fuera de Ciudad'
+                                    WHEN hg.tipo_gestion = 'no_interesa' THEN 'No Interesa'
+                                    WHEN hg.tipo_gestion = 'contactado' THEN 'Contactado'
+                                    ELSE hg.resultado
+                                END
+                        END AS resultado_export,
                         hg.observaciones,
+                        hg.fecha_gestion,
+                        hg.fecha_proximo_contacto,
+                        hg.hora_proximo_contacto,
                         c.estado_gestion,
-                        c.fecha_asignacion
+                        c.fecha_asignacion,
+                        c.fecha_creacion
                     FROM historial_gestion hg
                     INNER JOIN usuarios u ON hg.asesor_id = u.id
                     INNER JOIN clientes c ON hg.cliente_id = c.id
                     WHERE u.coordinador_id = ? 
                       AND u.rol = 'asesor'
                       AND DATE(hg.fecha_gestion) BETWEEN ? AND ?
+                      AND hg.tipo_contacto <> 'no_contactado'
                     ORDER BY hg.fecha_gestion DESC, u.nombre_completo, c.nombre_completo";
             
             $datos = $this->db->fetchAll($sql, [$coordinadorId, $fechaInicio, $fechaFin]);
             
             if (empty($datos)) {
-                $this->jsonResponse(['success' => false, 'error' => 'No hay datos para exportar en el rango de fechas seleccionado'], 404);
-                return;
+                // Redirigir a la vista con mensaje de error en lugar de JSON
+                header('Location: index.php?action=coordinador_descargar_archivos&error=no_data&fecha_inicio=' . urlencode($fechaInicio) . '&fecha_fin=' . urlencode($fechaFin));
+                exit;
             }
             
             // Configurar headers para descarga de CSV
-            $filename = 'gestion_asesores_' . $fechaInicio . '_' . $fechaFin . '.csv';
+            $filename = 'gestion_completa_asesores_' . $fechaInicio . '_' . $fechaFin . '.csv';
             
             header('Content-Type: text/csv; charset=utf-8');
             header('Content-Disposition: attachment; filename="' . $filename . '"');
@@ -1103,17 +1129,24 @@ class CoordinadorController {
             // BOM para UTF-8 (evita problemas con caracteres especiales en Excel)
             fprintf($output, chr(0xEF).chr(0xBB).chr(0xBF));
             
-            // Encabezados del CSV
+            // Encabezados del CSV (solo columnas con datos)
             $headers = [
                 'Asesor',
                 'Cliente',
                 'Cédula',
                 'Teléfono',
+                'Email',
+                'Ciudad',
                 'Tipo de Gestión',
-                'Fecha de Gestión',
+                'Tipo de Contacto',
+                'Resultado',
                 'Observaciones',
+                'Fecha de Gestión',
+                'Fecha Próximo Contacto',
+                'Hora Próximo Contacto',
                 'Estado del Cliente',
-                'Fecha de Asignación'
+                'Fecha de Asignación',
+                'Fecha de Creación del Cliente'
             ];
             
             fputcsv($output, $headers);
@@ -1125,11 +1158,18 @@ class CoordinadorController {
                     $row['cliente'],
                     $row['cedula'],
                     $row['telefono'],
-                    $row['tipo_gestion'],
-                    $row['fecha_gestion'],
+                    $row['email'],
+                    $row['ciudad'],
+                    $row['tipo_gestion_export'],
+                    $row['tipo_contacto'],
+                    $row['resultado_export'],
                     $row['observaciones'],
+                    $row['fecha_gestion'],
+                    $row['fecha_proximo_contacto'],
+                    $row['hora_proximo_contacto'],
                     $row['estado_gestion'],
-                    $row['fecha_asignacion']
+                    $row['fecha_asignacion'],
+                    $row['fecha_creacion']
                 ];
                 
                 fputcsv($output, $csvRow);

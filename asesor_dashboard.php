@@ -58,12 +58,23 @@
             <div class="stats-grid">
                 <div class="stat-card">
                     <div class="stat-icon">
+                        <i class="fas fa-users"></i>
+                    </div>
+                    <div class="stat-content">
+                        <h3>Total Clientes</h3>
+                        <p class="stat-number"><?php echo number_format($estadisticas['total_clientes'] ?? 0); ?></p>
+                        <p class="stat-label">Asignados</p>
+                    </div>
+                </div>
+
+                <div class="stat-card">
+                    <div class="stat-icon">
                         <i class="fas fa-check-circle"></i>
                     </div>
                     <div class="stat-content">
-                        <h3>Clientes Gestionados</h3>
-                        <p class="stat-number"><?php echo $estadisticas['clientes_gestionados'] ?? 0; ?></p>
-                        <p class="stat-label">Total</p>
+                        <h3>Gestionados</h3>
+                        <p class="stat-number"><?php echo number_format($estadisticas['clientes_gestionados'] ?? 0); ?></p>
+                        <p class="stat-label">En Proceso</p>
                     </div>
                 </div>
 
@@ -72,8 +83,8 @@
                         <i class="fas fa-clock"></i>
                     </div>
                     <div class="stat-content">
-                        <h3>Clientes Pendientes</h3>
-                        <p class="stat-number"><?php echo $estadisticas['clientes_pendientes'] ?? 0; ?></p>
+                        <h3>Pendientes</h3>
+                        <p class="stat-number"><?php echo number_format($estadisticas['clientes_pendientes'] ?? 0); ?></p>
                         <p class="stat-label">Por gestionar</p>
                     </div>
                 </div>
@@ -83,9 +94,9 @@
                         <i class="fas fa-calendar-check"></i>
                     </div>
                     <div class="stat-content">
-                        <h3>Citas Registradas</h3>
-                        <p class="stat-number"><?php echo $estadisticas['citas_registradas'] ?? 0; ?></p>
-                        <p class="stat-label">Hoy</p>
+                        <h3>Citas Hoy</h3>
+                        <p class="stat-number"><?php echo number_format($estadisticas['citas_agendadas_hoy'] ?? 0); ?></p>
+                        <p class="stat-label">Agendadas</p>
                     </div>
                 </div>
             </div>
@@ -116,45 +127,94 @@
 
             <!-- Resumen de actividad reciente -->
             <div class="recent-activity">
-                <h2>Actividad Reciente</h2>
+                <h2>Actividad Reciente (Últimas 3 Gestiones)</h2>
                 <div class="activity-list">
-                    <div class="activity-item">
-                        <div class="activity-icon">
-                            <i class="fas fa-phone"></i>
+                    <?php if (!empty($actividadReciente)): ?>
+                        <?php foreach ($actividadReciente as $actividad): ?>
+                            <div class="activity-item">
+                                <div class="activity-icon">
+                                    <?php 
+                                    $icono = 'fas fa-phone';
+                                    $titulo = 'Gestión realizada';
+                                    
+                                    switch($actividad['tipo_gestion']) {
+                                        case 'asignacion_cita':
+                                            $icono = 'fas fa-calendar-plus';
+                                            $titulo = 'Cita programada';
+                                            break;
+                                        case 'volver_llamar':
+                                            $icono = 'fas fa-clock';
+                                            $titulo = 'Volver a llamar';
+                                            break;
+                                        case 'no_interesa':
+                                            $icono = 'fas fa-times-circle';
+                                            $titulo = 'No interesa';
+                                            break;
+                                        case 'fuera_ciudad':
+                                            $icono = 'fas fa-map-marker-alt';
+                                            $titulo = 'Fuera de ciudad';
+                                            break;
+                                        case 'no_contactado':
+                                            $icono = 'fas fa-user-slash';
+                                            $titulo = 'No contactado';
+                                            break;
+                                        default:
+                                            $icono = 'fas fa-phone';
+                                            $titulo = 'Gestión realizada';
+                                    }
+                                    ?>
+                                    <i class="<?php echo $icono; ?>"></i>
+                                </div>
+                                <div class="activity-content">
+                                    <h4><?php echo htmlspecialchars($titulo); ?></h4>
+                                    <p>
+                                        <strong>Cliente:</strong> <?php echo htmlspecialchars($actividad['cliente_nombre']); ?> 
+                                        - <strong>Cédula:</strong> <?php echo htmlspecialchars($actividad['cliente_cedula']); ?>
+                                    </p>
+                                    <?php if (!empty($actividad['observaciones'])): ?>
+                                        <p class="activity-observations">
+                                            <strong>Observaciones:</strong> <?php echo htmlspecialchars(substr($actividad['observaciones'], 0, 100)); ?>
+                                            <?php if (strlen($actividad['observaciones']) > 100): ?>...<?php endif; ?>
+                                        </p>
+                                    <?php endif; ?>
+                                    <?php if ($actividad['tipo_gestion'] === 'volver_llamar' && !empty($actividad['fecha_proxima_accion'])): ?>
+                                        <p class="activity-next-action">
+                                            <strong>Próxima acción:</strong> <?php echo date('d/m/Y', strtotime($actividad['fecha_proxima_accion'])); ?>
+                                        </p>
+                                    <?php endif; ?>
+                                    <span class="activity-time">
+                                        <?php 
+                                        $fecha = new DateTime($actividad['fecha_gestion']);
+                                        $ahora = new DateTime();
+                                        $diferencia = $ahora->diff($fecha);
+                                        
+                                        if ($diferencia->days > 0) {
+                                            echo 'Hace ' . $diferencia->days . ' día' . ($diferencia->days > 1 ? 's' : '');
+                                        } elseif ($diferencia->h > 0) {
+                                            echo 'Hace ' . $diferencia->h . ' hora' . ($diferencia->h > 1 ? 's' : '');
+                                        } elseif ($diferencia->i > 0) {
+                                            echo 'Hace ' . $diferencia->i . ' minuto' . ($diferencia->i > 1 ? 's' : '');
+                                        } else {
+                                            echo 'Hace un momento';
+                                        }
+                                        ?>
+                                    </span>
+                                </div>
+                            </div>
+                        <?php endforeach; ?>
+                    <?php else: ?>
+                        <div class="no-activity">
+                            <i class="fas fa-info-circle"></i>
+                            <p>No hay actividad reciente para mostrar.</p>
+                            <small>Las gestiones aparecerán aquí después de que realices llamadas o gestiones.</small>
                         </div>
-                        <div class="activity-content">
-                            <h4>Llamada realizada</h4>
-                            <p>Cliente: Juan Pérez - Cédula: 12345678</p>
-                            <span class="activity-time">Hace 2 horas</span>
-                        </div>
-                    </div>
-                    
-                    <div class="activity-item">
-                        <div class="activity-icon">
-                            <i class="fas fa-calendar-plus"></i>
-                        </div>
-                        <div class="activity-content">
-                            <h4>Cita programada</h4>
-                            <p>Cliente: María García - Fecha: 15/12/2024</p>
-                            <span class="activity-time">Hace 4 horas</span>
-                        </div>
-                    </div>
-                    
-                    <div class="activity-item">
-                        <div class="activity-icon">
-                            <i class="fas fa-clock"></i>
-                        </div>
-                        <div class="activity-content">
-                            <h4>Volver a llamar</h4>
-                            <p>Cliente: Carlos López - Fecha: 16/12/2024</p>
-                            <span class="activity-time">Hace 6 horas</span>
-                        </div>
-                    </div>
+                    <?php endif; ?>
                 </div>
             </div>
         </div>
     </div>
 
-    <script src="assets/js/asesor-dashboard.js"></script>
+    <!-- Script unificado -->
+    
 </body>
 </html>

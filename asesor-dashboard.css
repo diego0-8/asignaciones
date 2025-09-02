@@ -418,6 +418,56 @@ body {
 .activity-time {
     font-size: 11px;
     color: #95a5a6;
+    font-weight: 500;
+    background: #f8f9fa;
+    padding: 4px 8px;
+    border-radius: 12px;
+    display: inline-block;
+    margin-top: 8px;
+}
+
+.activity-observations {
+    font-size: 11px;
+    color: #6c757d;
+    background: #f8f9fa;
+    padding: 8px 12px;
+    border-radius: 6px;
+    border-left: 3px solid var(--primary-color);
+    margin: 8px 0;
+}
+
+.activity-next-action {
+    font-size: 11px;
+    color: var(--accent-color);
+    background: #e8f5e8;
+    padding: 6px 10px;
+    border-radius: 6px;
+    border-left: 3px solid var(--accent-color);
+    margin: 8px 0;
+    font-weight: 500;
+}
+
+.no-activity {
+    text-align: center;
+    padding: 40px 20px;
+    color: #6c757d;
+}
+
+.no-activity i {
+    font-size: 3em;
+    color: #bdc3c7;
+    margin-bottom: 15px;
+}
+
+.no-activity p {
+    margin: 0 0 10px 0;
+    font-size: 1.1em;
+    color: #495057;
+}
+
+.no-activity small {
+    color: #6c757d;
+    font-size: 0.9em;
 }
 
 /* Filtros y búsqueda */

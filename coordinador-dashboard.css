@@ -29,7 +29,7 @@
 }
 
 .modal-header {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: linear-gradient(135deg, #2188ee 0%, #007bff 100%);
     color: white;
     padding: 20px;
     border-radius: 10px 10px 0 0;
@@ -91,7 +91,7 @@
 .asesor-avatar {
     width: 80px;
     height: 80px;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: linear-gradient(135deg, #2188ee 0%, #007bff 100%);
     border-radius: 50%;
     display: flex;
     align-items: center;
@@ -175,7 +175,7 @@
 
 .btn-search {
     padding: 12px 20px;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: linear-gradient(135deg, #2188ee 0%, #007bff 100%);
     color: white;
     border: none;
     border-radius: 8px;
@@ -230,7 +230,7 @@
 }
 
 .clientes-table th {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: linear-gradient(135deg, #2188ee 0%, #007bff 100%);
     color: white;
     padding: 15px;
     text-align: left;
@@ -310,6 +310,171 @@
 .tipificacion-volver_llamar {
     background-color: #e3f2fd;
     color: #1976d2;
+}
+
+.tipificacion-fuera_ciudad {
+    background-color: #e0f2f1;
+    color: #00695c;
+}
+
+.tipificacion-no_interesa {
+    background-color: #ffebee;
+    color: #c62828;
+}
+
+.tipificacion-no_contactado {
+    background-color: #fafafa;
+    color: #424242;
+}
+
+/* ===== HEADER DE CLIENTES ===== */
+.clientes-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+}
+
+.clientes-header h4 {
+    margin: 0;
+    color: #333;
+    font-size: 1.3em;
+}
+
+.contador-filtros {
+    background: #e3f2fd;
+    padding: 8px 16px;
+    border-radius: 20px;
+    border: 1px solid #bbdefb;
+}
+
+.contador-info {
+    color: #1976d2;
+    font-size: 0.9em;
+    font-weight: 500;
+}
+
+.contador-info i {
+    margin-right: 6px;
+}
+
+/* ===== INFORMACIÓN DE CLIENTES ===== */
+.cliente-info {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.cliente-info strong {
+    color: #333;
+    font-size: 1em;
+}
+
+.cliente-info small {
+    color: #666;
+    font-size: 0.8em;
+}
+
+.cedula-code {
+    background: #f5f5f5;
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-family: 'Courier New', monospace;
+    font-size: 0.9em;
+    color: #333;
+}
+
+.telefono-info {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: #666;
+}
+
+.telefono-info i {
+    color: #4caf50;
+}
+
+.fecha-info {
+    color: #666;
+    font-size: 0.9em;
+}
+
+/* ===== BOTONES DE ACCIÓN ===== */
+.acciones-cliente {
+    display: flex;
+    gap: 8px;
+    justify-content: center;
+}
+
+.btn-accion {
+    width: 36px;
+    height: 36px;
+    border: none;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    font-size: 0.9em;
+}
+
+.btn-transferir {
+    background-color: #ff9800;
+    color: white;
+}
+
+.btn-transferir:hover {
+    background-color: #f57c00;
+    transform: scale(1.1);
+}
+
+.btn-liberar {
+    background-color: #f44336;
+    color: white;
+}
+
+.btn-liberar:hover {
+    background-color: #d32f2f;
+    transform: scale(1.1);
+}
+
+.btn-ver {
+    background-color: #2196f3;
+    color: white;
+}
+
+.btn-ver:hover {
+    background-color: #1976d2;
+    transform: scale(1.1);
+}
+
+/* ===== MENSAJE SIN CLIENTES ===== */
+.no-data-message {
+    text-align: center;
+    padding: 40px 20px;
+    background: #f8f9fa;
+    border-radius: 8px;
+    border: 2px dashed #dee2e6;
+    margin: 20px 0;
+}
+
+.no-data-message i {
+    font-size: 3em;
+    color: #6c757d;
+    margin-bottom: 15px;
+}
+
+.no-data-message p {
+    color: #6c757d;
+    font-size: 1.1em;
+    margin-bottom: 20px;
+}
+
+.no-data-message .btn {
+    border-radius: 20px;
+    padding: 8px 20px;
 }
 
 .tipificacion-fuera_ciudad {
@@ -474,5 +639,462 @@
     .clientes-table th,
     .clientes-table td {
         padding: 10px 8px;
+    }
+}
+
+/* ===== TABLA DE ASESORES ===== */
+.asesores-table-container {
+    overflow-x: auto;
+    border-radius: 10px;
+    border: 1px solid #e9ecef;
+    background: white;
+    margin-bottom: 30px;
+}
+
+.asesores-table {
+    width: 100%;
+    border-collapse: collapse;
+    background-color: white;
+}
+
+.asesores-table th {
+    background: linear-gradient(135deg, #2188ee 0%, #007bff 100%);
+    color: white;
+    padding: 15px 12px;
+    text-align: left;
+    font-weight: 600;
+    font-size: 0.9em;
+    white-space: nowrap;
+}
+
+
+
+.asesores-table td {
+    padding: 12px;
+    border-bottom: 1px solid #e9ecef;
+    vertical-align: middle;
+}
+
+.asesores-table tr:hover {
+    background-color: #f8f9fa;
+}
+
+.asesor-row {
+    transition: background-color 0.2s ease;
+}
+
+.asesor-info {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.asesor-avatar-small {
+    width: 40px;
+    height: 40px;
+    background: linear-gradient(135deg, #007bff 0%, #007bff 100%);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-size: 1.2em;
+}
+
+.asesor-details strong {
+    color: #2c3e50;
+    font-size: 14px;
+}
+
+.asesor-status-badge {
+    background: #27ae60;
+    color: white;
+    padding: 4px 12px;
+    border-radius: 15px;
+    font-size: 0.8em;
+    font-weight: 500;
+    display: inline-block;
+}
+
+.stat-value {
+    text-align: center;
+}
+
+.stat-number {
+    font-weight: 600;
+    font-size: 19px;
+    color: #2c3e50;
+}
+
+.stat-number.success {
+    color: #27ae60;
+}
+
+.stat-number.warning {
+    color: #f39c12;
+}
+
+.progreso-cell {
+    text-align: center;
+    min-width: 120px;
+}
+
+.progress-bar-compact {
+    width: 100%;
+    height: 8px;
+    background-color: #e9ecef;
+    border-radius: 4px;
+    overflow: hidden;
+    margin-bottom: 5px;
+}
+
+.progress-fill-compact {
+    height: 100%;
+    background: linear-gradient(135deg, #007bff 0%, #01491f 100%);
+    border-radius: 4px;
+    transition: width 0.3s ease;
+}
+
+.progress-text-compact {
+    font-size: 11px;
+    color: #6c757d;
+    font-weight: 500;
+}
+
+.acciones-cell {
+    text-align: center;
+}
+
+.acciones-cell .btn {
+    padding: 6px 12px;
+    font-size: 0.8em;
+}
+
+/* Responsive para tabla de asesores */
+@media (max-width: 768px) {
+    .asesores-table-container {
+        font-size: 0.85em;
+    }
+    
+    .asesores-table th,
+    .asesores-table td {
+        padding: 8px 6px;
+    }
+    
+    .asesor-avatar-small {
+        width: 32px;
+        height: 32px;
+        font-size: 1em;
+    }
+    
+    .asesor-details strong {
+        font-size: 0.85em;
+    }
+    
+    .progress-text-compact {
+        font-size: 0.75em;
+    }
+}
+
+/* ===== FILTROS JERÁRQUICOS ===== */
+.filtros-jerarquicos {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    padding: 20px;
+    background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+    border-radius: 15px;
+    border: 1px solid #dee2e6;
+    margin-bottom: 20px;
+}
+
+.filtro-nivel {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.filtro-nivel label {
+    font-weight: 600;
+    color: #495057;
+    font-size: 0.95em;
+    margin-bottom: 5px;
+}
+
+.filtro-nivel select {
+    padding: 12px 16px;
+    border: 2px solid #e9ecef;
+    border-radius: 8px;
+    background: white;
+    color: #495057;
+    font-size: 0.95em;
+    transition: all 0.3s ease;
+    min-width: 250px;
+}
+
+.filtro-nivel select:focus {
+    outline: none;
+    border-color: #667eea;
+    box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+}
+
+.filtro-nivel select:hover {
+    border-color: #adb5bd;
+}
+
+.filtros-acciones {
+    display: flex;
+    gap: 15px;
+    align-items: center;
+    padding-top: 10px;
+    border-top: 1px solid #dee2e6;
+}
+
+.filtros-acciones .btn {
+    padding: 10px 20px;
+    border: none;
+    border-radius: 8px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.95em;
+}
+
+.filtros-acciones .btn-primary {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+}
+
+.filtros-acciones .btn-primary:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+}
+
+.filtros-acciones .btn-secondary {
+    background: #6c757d;
+    color: white;
+}
+
+.filtros-acciones .btn-secondary:hover {
+    background: #5a6268;
+    transform: translateY(-2px);
+}
+
+/* Responsive para filtros jerárquicos */
+@media (max-width: 768px) {
+    .filtros-jerarquicos {
+        padding: 15px;
+    }
+    
+    .filtro-nivel select {
+        min-width: auto;
+        width: 100%;
+    }
+    
+    .filtros-acciones {
+        flex-direction: column;
+        align-items: stretch;
+    }
+    
+    .filtros-acciones .btn {
+        justify-content: center;
+    }
+}
+
+/* Estilos para filtros jerárquicos */
+.filtros-jerarquicos {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+    padding: 20px;
+    background: #f8f9fa;
+    border-radius: 10px;
+    border: 1px solid #e9ecef;
+    margin-bottom: 20px;
+}
+
+.filtro-nivel {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.filtro-nivel label {
+    font-weight: 600;
+    color: #495057;
+    font-size: 14px;
+    margin-bottom: 5px;
+}
+
+.filtro-nivel select,
+.filtro-nivel input {
+    padding: 10px 12px;
+    border: 1px solid #ced4da;
+    border-radius: 6px;
+    font-size: 14px;
+    background: white;
+    transition: border-color 0.3s, box-shadow 0.3s;
+}
+
+.filtro-nivel select:focus,
+.filtro-nivel input:focus {
+    outline: none;
+    border-color: #667eea;
+    box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+}
+
+.filtros-acciones {
+    display: flex;
+    gap: 10px;
+    margin-top: 10px;
+}
+
+.filtros-acciones .btn {
+    padding: 10px 20px;
+    font-size: 14px;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.3s;
+}
+
+.filtros-acciones .btn-primary {
+    background: #667eea;
+    color: white;
+    border: none;
+}
+
+.filtros-acciones .btn-primary:hover {
+    background: #5a6fd8;
+    transform: translateY(-1px);
+}
+
+.filtros-acciones .btn-secondary {
+    background: #6c757d;
+    color: white;
+    border: none;
+}
+
+.filtros-acciones .btn-secondary:hover {
+    background: #5a6268;
+    transform: translateY(-1px);
+}
+
+/* Estilos para filtros de fecha rápida */
+.filtros-fecha-rapidos {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 15px;
+}
+
+.btn-fecha-rapida {
+    padding: 8px 16px;
+    border: 1px solid #e9ecef;
+    border-radius: 20px;
+    background: white;
+    color: #495057;
+    font-size: 0.85em;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.btn-fecha-rapida:hover {
+    background: #667eea;
+    color: white;
+    border-color: #667eea;
+    transform: translateY(-1px);
+    box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
+}
+
+.btn-fecha-rapida.active {
+    background: #667eea;
+    color: white;
+    border-color: #667eea;
+}
+
+/* Estilos para filtros de fecha personalizada */
+.filtros-fecha-calendario {
+    display: flex;
+    gap: 15px;
+    align-items: flex-end;
+    margin-top: 10px;
+    padding: 15px;
+    background: #f8f9fa;
+    border-radius: 8px;
+    border: 1px solid #e9ecef;
+}
+
+.filtros-fecha-rango {
+    display: flex;
+    gap: 15px;
+    align-items: end;
+}
+
+.filtro-fecha-item {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    flex: 1;
+}
+
+.filtro-fecha-item label {
+    font-size: 12px;
+    color: #6c757d;
+    font-weight: 500;
+}
+
+.filtro-fecha-item input[type="date"] {
+    padding: 8px 10px;
+    font-size: 13px;
+}
+
+.btn-fecha-aplicar {
+    padding: 8px 16px;
+    background: #28a745;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    font-size: 0.9em;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.btn-fecha-aplicar:hover {
+    background: #218838;
+}
+
+/* Responsive para filtros */
+@media (max-width: 768px) {
+    .filtros-jerarquicos {
+        padding: 15px;
+        gap: 12px;
+    }
+    
+    .filtros-fecha-rango {
+        flex-direction: column;
+        gap: 10px;
+    }
+    
+    .filtro-fecha-item {
+        flex: none;
+    }
+    
+    .filtros-acciones {
+        flex-direction: column;
+        gap: 8px;
+    }
+    
+    .filtros-acciones .btn {
+        width: 100%;
+        text-align: center;
     }
 }

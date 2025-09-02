@@ -4,7 +4,7 @@
  * Maneja todas las operaciones relacionadas con clientes
  */
 
-require_once 'Database.php';
+require_once __DIR__ . '/Database.php';
 
 class ClienteModel {
     private $db;

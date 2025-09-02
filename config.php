@@ -3,7 +3,7 @@
 define('DB_HOST', 'localhost');
 define('DB_USER', 'root');
 define('DB_PASS', '');
-define('DB_NAME', 'citas');
+define('DB_NAME', 'citas2');
 
 // Habilitar reporte de errores para debugging
 error_reporting(E_ALL);
