@@ -145,6 +145,20 @@
                                 </select>
                             </div>
 
+                            <!-- Opciones de no contacto (se muestran solo si es no_contactado) -->
+                            <div id="opciones_no_contacto" class="form-group" style="display: none;">
+                                <label for="motivo_no_contacto">Motivo de No Contacto *</label>
+                                <select name="motivo_no_contacto" id="motivo_no_contacto" required>
+                                    <option value="">Selecciona el motivo</option>
+                                    <option value="no_contesta">No Contesta</option>
+                                    <option value="buzon_voz">Buzón de Voz</option>
+                                    <option value="ocupado">Ocupado</option>
+                                    <option value="fuera_servicio">Fuera de Servicio</option>
+                                    <option value="numero_incorrecto">Número Incorrecto</option>
+                                    <option value="no_disponible">No Disponible</option>
+                                </select>
+                            </div>
+
                             <!-- Campos específicos para asignación de cita -->
                             <div id="campos_cita" class="form-group" style="display: none;">
                                 <div class="form-row">
@@ -196,11 +210,13 @@
                                 <div class="form-row">
                                     <div class="form-col">
                                         <label for="fecha_proximo_contacto">Fecha para Llamar *</label>
-                                        <input type="date" name="fecha_proximo_contacto" id="fecha_proximo_contacto" min="<?php echo date('Y-m-d'); ?>">
+                                        <input type="date" name="fecha_proximo_contacto" id="fecha_proximo_contacto" min="<?php echo date('Y-m-d'); ?>" required>
+                                        <small class="form-text">Solo fechas futuras (Lunes a Sábado)</small>
                                     </div>
                                     <div class="form-col">
                                         <label for="hora_proximo_contacto">Hora para Llamar *</label>
-                                        <input type="time" name="hora_proximo_contacto" id="hora_proximo_contacto">
+                                        <input type="time" name="hora_proximo_contacto" id="hora_proximo_contacto" min="07:30" max="18:00" required>
+                                        <small class="form-text">Horario: 7:30 AM - 6:00 PM</small>
                                     </div>
                                 </div>
                             </div>

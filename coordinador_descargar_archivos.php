@@ -81,7 +81,7 @@
                                         <i class="fas fa-database"></i>
                                         <div>
                                             <h4>Datos Incluidos</h4>
-                                            <p>Cédula, nombre, teléfono, asesor asignado, fecha de gestión, tipo de gestión, resultado, comentarios, monto de venta, duración de llamada y próxima fecha</p>
+                                            <p>Cédula, nombre, teléfono, asesor asignado, base de datos origen, fecha de gestión, tipo de gestión, resultado, comentarios, monto de venta, duración de llamada y próxima fecha</p>
                                         </div>
                                     </div>
                                     

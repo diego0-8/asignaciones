@@ -42,6 +42,24 @@ class AdminController {
             exit;
         }
         
+        // Obtener parámetros de paginación y filtros
+        $pagina_actual = $_GET['pagina'] ?? 1;
+        $limite = 10;
+        $busqueda = $_GET['buscar'] ?? '';
+        $filtro_rol = $_GET['rol'] ?? '';
+        $filtro_estado = $_GET['estado'] ?? '';
+        
+        // Obtener usuarios con paginación
+        $usuarios = $this->usuarioModel->getAllUsuarios($pagina_actual, $limite, $busqueda, $filtro_rol, $filtro_estado);
+        $total_usuarios = $this->usuarioModel->getTotalUsuarios($busqueda, $filtro_rol, $filtro_estado);
+        $total_paginas = ceil($total_usuarios / $limite);
+        
+        // Obtener estadísticas
+        $estadisticas = $this->usuarioModel->getEstadisticasUsuarios();
+        
+        // Obtener coordinadores para los selects
+        $coordinadores = $this->usuarioModel->getCoordinadoresDisponibles();
+        
         // Incluir vista
         include __DIR__ . '/../views/admin_usuarios.php';
     }
@@ -286,6 +304,174 @@ class AdminController {
     }
     
     /**
+     * Actualizar usuario (AJAX)
+     */
+    public function updateUsuario() {
+        // Verificar autorización
+        if (!isset($_SESSION['user_id']) || $_SESSION['user_role'] !== 'administrador') {
+            $this->jsonResponse(['success' => false, 'message' => 'No autorizado'], 403);
+        }
+        
+        // Verificar método
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            $this->jsonResponse(['success' => false, 'message' => 'Método no permitido'], 405);
+        }
+        
+        $id = $_POST['id'] ?? null;
+        if (!$id) {
+            $this->jsonResponse(['success' => false, 'message' => 'ID de usuario requerido']);
+        }
+        
+        // Obtener datos
+        $data = [
+            'nombre' => $_POST['nombre'] ?? '',
+            'cedula' => $_POST['cedula'] ?? '',
+            'usuario' => $_POST['usuario'] ?? '',
+            'rol' => $_POST['rol'] ?? '',
+            'coordinador_id' => $_POST['coordinador_id'] ?: null
+        ];
+        
+        // Validaciones
+        $errors = $this->validarDatosUsuarioUpdate($data, $id);
+        
+        if (empty($errors)) {
+            // Actualizar usuario
+            if ($this->usuarioModel->updateUsuario($id, $data)) {
+                // Log de actividad
+                $this->usuarioModel->logActividad(
+                    $_SESSION['user_id'], 
+                    'actualizar_usuario', 
+                    'Usuario actualizado: ' . $data['nombre']
+                );
+                
+                $this->jsonResponse(['success' => true, 'message' => 'Usuario actualizado exitosamente']);
+            } else {
+                $this->jsonResponse(['success' => false, 'message' => 'Error al actualizar el usuario']);
+            }
+        } else {
+            $this->jsonResponse(['success' => false, 'message' => implode(', ', $errors)]);
+        }
+    }
+    
+    /**
+     * Eliminar usuario (AJAX)
+     */
+    public function deleteUsuario() {
+        // Verificar autorización
+        if (!isset($_SESSION['user_id']) || $_SESSION['user_role'] !== 'administrador') {
+            $this->jsonResponse(['success' => false, 'message' => 'No autorizado'], 403);
+        }
+        
+        // Verificar método
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            $this->jsonResponse(['success' => false, 'message' => 'Método no permitido'], 405);
+        }
+        
+        $id = $_POST['id'] ?? null;
+        if (!$id) {
+            $this->jsonResponse(['success' => false, 'message' => 'ID de usuario requerido']);
+        }
+        
+        // Verificar que no se esté eliminando a sí mismo
+        if ($id == $_SESSION['user_id']) {
+            $this->jsonResponse(['success' => false, 'message' => 'No puedes eliminar tu propio usuario']);
+        }
+        
+        // Obtener información del usuario antes de eliminar
+        $usuario = $this->usuarioModel->getUsuarioById($id);
+        if (!$usuario) {
+            $this->jsonResponse(['success' => false, 'message' => 'Usuario no encontrado']);
+        }
+        
+        // Eliminar usuario
+        if ($this->usuarioModel->deleteUsuario($id)) {
+            // Log de actividad
+            $this->usuarioModel->logActividad(
+                $_SESSION['user_id'], 
+                'eliminar_usuario', 
+                'Usuario eliminado: ' . $usuario['nombre_completo']
+            );
+            
+            $this->jsonResponse(['success' => true, 'message' => 'Usuario eliminado exitosamente']);
+        } else {
+            $this->jsonResponse(['success' => false, 'message' => 'Error al eliminar el usuario']);
+        }
+    }
+    
+    /**
+     * Cambiar estado de usuario (AJAX)
+     */
+    public function toggleEstadoUsuario() {
+        // Verificar autorización
+        if (!isset($_SESSION['user_id']) || $_SESSION['user_role'] !== 'administrador') {
+            $this->jsonResponse(['success' => false, 'message' => 'No autorizado'], 403);
+        }
+        
+        // Verificar método
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            $this->jsonResponse(['success' => false, 'message' => 'Método no permitido'], 405);
+        }
+        
+        $id = $_POST['id'] ?? null;
+        if (!$id) {
+            $this->jsonResponse(['success' => false, 'message' => 'ID de usuario requerido']);
+        }
+        
+        // Verificar que no se esté deshabilitando a sí mismo
+        if ($id == $_SESSION['user_id']) {
+            $this->jsonResponse(['success' => false, 'message' => 'No puedes deshabilitar tu propio usuario']);
+        }
+        
+        // Obtener información del usuario antes de cambiar estado
+        $usuario = $this->usuarioModel->getUsuarioById($id);
+        if (!$usuario) {
+            $this->jsonResponse(['success' => false, 'message' => 'Usuario no encontrado']);
+        }
+        
+        // Cambiar estado
+        if ($this->usuarioModel->toggleEstadoUsuario($id)) {
+            $nuevo_estado = ($usuario['estado'] === 'Activo') ? 'Inactivo' : 'Activo';
+            
+            // Log de actividad
+            $this->usuarioModel->logActividad(
+                $_SESSION['user_id'], 
+                'cambiar_estado_usuario', 
+                "Usuario {$nuevo_estado}: " . $usuario['nombre_completo']
+            );
+            
+            $this->jsonResponse([
+                'success' => true, 
+                'message' => "Usuario {$nuevo_estado} exitosamente",
+                'nuevo_estado' => $nuevo_estado
+            ]);
+        } else {
+            $this->jsonResponse(['success' => false, 'message' => 'Error al cambiar el estado del usuario']);
+        }
+    }
+    
+    /**
+     * Obtener usuario por ID (AJAX)
+     */
+    public function getUsuario() {
+        // Verificar autorización
+        if (!isset($_SESSION['user_id']) || $_SESSION['user_role'] !== 'administrador') {
+            $this->jsonResponse(['success' => false, 'message' => 'No autorizado'], 403);
+        }
+        
+        $id = $_GET['id'] ?? null;
+        if (!$id) {
+            $this->jsonResponse(['success' => false, 'message' => 'ID de usuario requerido']);
+        }
+        
+        $usuario = $this->usuarioModel->getUsuarioById($id);
+        if (!$usuario) {
+            $this->jsonResponse(['success' => false, 'message' => 'Usuario no encontrado']);
+        }
+        
+        $this->jsonResponse(['success' => true, 'data' => $usuario]);
+    }
+    
+    /**
      * Validar datos de usuario
      */
     private function validarDatosUsuario($data) {
@@ -305,6 +491,32 @@ class AdminController {
 
             // Verificar usuario único
             if (!$this->usuarioModel->verificarUsuarioUnico($data['usuario'])) {
+                $errors[] = 'El nombre de usuario ya está en uso.';
+            }
+        }
+        
+        return $errors;
+    }
+    
+    /**
+     * Validar datos de usuario para actualización
+     */
+    private function validarDatosUsuarioUpdate($data, $excludeId) {
+        $errors = [];
+
+        if (empty($data['nombre'])) $errors[] = 'El nombre es obligatorio.';
+        if (empty($data['cedula'])) $errors[] = 'La cédula es obligatoria.';
+        if (empty($data['usuario'])) $errors[] = 'El usuario es obligatorio.';
+        if (empty($data['rol'])) $errors[] = 'El rol es obligatorio.';
+
+        if (empty($errors)) {
+            // Verificar cédula única (excluyendo el usuario actual)
+            if (!$this->usuarioModel->verificarCedulaUnica($data['cedula'], $excludeId)) {
+                $errors[] = 'La cédula ya está registrada.';
+            }
+
+            // Verificar usuario único (excluyendo el usuario actual)
+            if (!$this->usuarioModel->verificarUsuarioUnico($data['usuario'], $excludeId)) {
                 $errors[] = 'El nombre de usuario ya está en uso.';
             }
         }

@@ -125,70 +125,21 @@
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    <?php if (!empty($usuarios)): ?>
-                                        <?php foreach ($usuarios as $usuario): ?>
-                                            <tr>
-                                                <td><?php echo $usuario['id']; ?></td>
-                                                <td><?php echo htmlspecialchars($usuario['nombre_completo']); ?></td>
-                                                <td><?php echo htmlspecialchars($usuario['usuario']); ?></td>
-                                                <td>
-                                                    <span class="role-badge role-<?php echo $usuario['rol']; ?>">
-                                                        <?php echo ucfirst($usuario['rol']); ?>
-                                                    </span>
-                                                </td>
-                                                <td>
-                                                    <span class="status-badge status-<?php echo $usuario['estado'] ?? 'activo'; ?>">
-                                                        <?php echo ucfirst($usuario['estado'] ?? 'activo'); ?>
-                                                    </span>
-                                                </td>
-                                                <td>
-                                                    <?php if ($usuario['rol'] === 'asesor' && isset($usuario['coordinador_nombre'])): ?>
-                                                        <?php echo htmlspecialchars($usuario['coordinador_nombre']); ?>
-                                                    <?php else: ?>
-                                                        <span class="text-muted">-</span>
-                                                    <?php endif; ?>
-                                                </td>
-                                                <td class="actions-cell">
-                                                    <div class="action-buttons">
-                                                        <button class="action-btn edit-btn" onclick="editarUsuario(<?php echo $usuario['id']; ?>)" title="Editar">
-                                                            <i class="fas fa-edit"></i>
-                                                        </button>
-                                                        <?php if (($usuario['estado'] ?? 'activo') === 'activo'): ?>
-                                                            <button class="action-btn disable-btn" onclick="deshabilitarUsuario(<?php echo $usuario['id']; ?>)" title="Deshabilitar">
-                                                                <i class="fas fa-user-slash"></i>
-                                                            </button>
-                                                        <?php else: ?>
-                                                            <button class="action-btn enable-btn" onclick="habilitarUsuario(<?php echo $usuario['id']; ?>)" title="Habilitar">
-                                                                <i class="fas fa-user-check"></i>
-                                                            </button>
-                                                        <?php endif; ?>
-                                                        <button class="action-btn delete-btn" onclick="eliminarUsuario(<?php echo $usuario['id']; ?>)" title="Eliminar">
-                                                            <i class="fas fa-trash"></i>
-                                                        </button>
-                                                    </div>
-                                                </td>
-                                            </tr>
-                                        <?php endforeach; ?>
-                                    <?php else: ?>
-                                        <tr>
-                                            <td colspan="7" class="no-data">No hay usuarios registrados</td>
-                                        </tr>
-                                    <?php endif; ?>
+                                    <!-- Los usuarios se cargarán dinámicamente via JavaScript -->
+                                    <tr>
+                                        <td colspan="7" class="loading-data">
+                                            <i class="fas fa-spinner fa-spin"></i>
+                                            Cargando usuarios...
+                                        </td>
+                                    </tr>
                                 </tbody>
                             </table>
                         </div>
 
                         <!-- Paginación -->
-                        <?php if (isset($total_paginas) && $total_paginas > 1): ?>
-                            <div class="pagination">
-                                <?php for ($i = 1; $i <= $total_paginas; $i++): ?>
-                                    <a href="?action=admin_usuarios&pagina=<?php echo $i; ?>" 
-                                       class="page-link <?php echo ($pagina_actual == $i) ? 'active' : ''; ?>">
-                                        <?php echo $i; ?>
-                                    </a>
-                                <?php endfor; ?>
-                            </div>
-                        <?php endif; ?>
+                        <div class="pagination" id="pagination">
+                            <!-- La paginación se generará dinámicamente via JavaScript -->
+                        </div>
                         </div>
                     </div>
 
@@ -339,7 +290,10 @@
                 <button class="close-btn" onclick="closeModal('editar-usuario')">&times;</button>
             </div>
             <div class="modal-body">
-                <form action="index.php?action=update_usuario" method="POST" id="form-editar-usuario">
+                <!-- Contenedor de alertas -->
+                <div id="alert-container-editar" style="display: none;"></div>
+                
+                <form id="form-editar-usuario" onsubmit="adminUsuarios.actualizarUsuario(event)">
                     <input type="hidden" id="edit_id" name="id">
                     <div class="form-group">
                         <label for="edit_nombre">Nombre Completo *</label>
@@ -373,7 +327,9 @@
                     </div>
                     <div class="form-actions">
                         <button type="button" class="btn btn-secondary" onclick="closeModal('editar-usuario')">Cancelar</button>
-                        <button type="submit" class="btn btn-primary">Actualizar Usuario</button>
+                        <button type="submit" class="btn btn-primary" id="btn-actualizar-usuario">
+                            <i class="fas fa-save"></i> Actualizar Usuario
+                        </button>
                     </div>
                 </form>
             </div>

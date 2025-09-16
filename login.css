@@ -16,32 +16,49 @@
 }
 
 /* ===== ESTILOS BASE ===== */
-body {
-    font-family: 'Inter', sans-serif;
+* {
     margin: 0;
     padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Inter', sans-serif;
     min-height: 100vh;
     display: flex;
     justify-content: center;
     align-items: center;
     overflow: hidden;
+    
+    /* Imagen de fondo adaptativa */
     background-image: url(../images/Frame16.png);
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+    background-attachment: fixed;
+    
+    /* Gradiente superpuesto para mejor legibilidad */
+    background: linear-gradient(135deg, rgba(15, 23, 42, 0.7), rgba(30, 41, 59, 0.8)), 
+                url(../images/Frame16.png);
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+    background-attachment: fixed;
 }
 
-/* ===== CONTENEDOR PRINCIPAL ===== */
-.login-container {
+/* ===== CONTENEDOR PRINCIPAL DE DOS COLUMNAS ===== */
+.login-wrapper {
+    display: flex;
+    width: 90%;
+    max-width: 1000px;
+    min-height: 600px;
     background: var(--bg-dark);
     backdrop-filter: blur(10px);
     -webkit-backdrop-filter: blur(10px);
     border: 1px solid var(--border-color);
     border-radius: 1.5rem;
     box-shadow: var(--shadow), 0 0 0 1px rgba(255, 255, 255, 0.05);
-    padding: 3rem;
-    width: 90%;
-    max-width: 450px;
-    text-align: center;
-    position: relative;
-    z-index: 10;
+    overflow: hidden;
     animation: fadeInUp 0.6s ease-out;
 }
 
@@ -56,14 +73,114 @@ body {
     }
 }
 
+/* ===== COLUMNA IZQUIERDA - IMAGEN Y DESCRIPCIÓN ===== */
+.login-info {
+    flex: 1;
+    background: url(../images/Frame17.png);
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    padding: 3rem;
+    text-align: center;
+    position: relative;
+    overflow: hidden;
+}
+
+/* Gradiente superpuesto para mejor legibilidad del contenido */
+.login-info::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(135deg, rgba(37, 99, 235, 0.8), rgba(59, 130, 246, 0.6));
+    z-index: 1;
+}
+
+.login-info-content {
+    position: relative;
+    z-index: 2;
+    color: var(--text-white);
+}
+
+.login-info img {
+    width: 120px;
+    height: 120px;
+    margin-bottom: 2rem;
+    border-radius: 50%;
+    border: 3px solid rgba(255, 255, 255, 0.2);
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+}
+
+.login-info h1 {
+    font-size: 2.5rem;
+    font-weight: 700;
+    margin-bottom: 1rem;
+    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+}
+
+.login-info h2 {
+    font-size: 1.5rem;
+    font-weight: 600;
+    margin-bottom: 1.5rem;
+    opacity: 0.9;
+}
+
+.login-info p {
+    font-size: 1.1rem;
+    line-height: 1.6;
+    opacity: 0.8;
+    max-width: 400px;
+    margin: 0 auto;
+}
+
+.login-info .features {
+    margin-top: 2rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.8rem;
+}
+
+.login-info .feature {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    font-size: 0.95rem;
+    opacity: 0.9;
+}
+
+.login-info .feature i {
+    color: rgba(255, 255, 255, 0.8);
+    font-size: 1rem;
+}
+
+/* ===== COLUMNA DERECHA - FORMULARIO DE LOGIN ===== */
+.login-container {
+    flex: 1;
+    padding: 3rem;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    background: rgba(30, 41, 59, 0.95);
+}
+
 /* ===== HEADER Y TÍTULO ===== */
 .login-header {
     margin-bottom: 2rem;
+    text-align: center;
 }
 
 .login-header i {
     display: block;
     margin: 0 auto 1rem;
+    font-size: 3rem;
+    color: var(--secondary-color);
     animation: pulse 2s infinite;
 }
 
@@ -255,6 +372,8 @@ body {
     justify-content: center;
     gap: 0.5rem;
     margin: 0;
+    color: var(--text-gray);
+    font-size: 0.9rem;
 }
 
 .login-footer i {
@@ -291,42 +410,109 @@ body {
     font-size: 1.1rem;
 }
 
-/* ===== RESPONSIVE DESIGN ===== */
+/* ===== RESPONSIVE DESIGN - SOLO MÓVILES ===== */
 @media (max-width: 768px) {
+    body {
+        padding: 1rem;
+    }
+    
+    .login-wrapper {
+        flex-direction: column;
+        width: 100%;
+        max-width: 100%;
+        min-height: auto;
+        border-radius: 1rem;
+    }
+    
+    .login-info {
+        padding: 2rem;
+        order: 2;
+    }
+    
+    .login-info h1 {
+        font-size: 2rem;
+    }
+    
+    .login-info h2 {
+        font-size: 1.25rem;
+    }
+    
+    .login-info p {
+        font-size: 1rem;
+    }
+    
+    .login-info img {
+        width: 80px;
+        height: 80px;
+        margin-bottom: 1.5rem;
+    }
+    
     .login-container {
         padding: 2rem;
-        width: 95%;
-        max-width: 400px;
+        order: 1;
     }
     
     .login-container h2 {
         font-size: 1.75rem;
     }
     
+    .input-group {
+        margin-bottom: 1.5rem;
+    }
+    
     .input-group input {
         padding: 0.9rem 1rem;
+        font-size: 0.95rem;
     }
     
     .login-button {
         padding: 0.9rem;
         font-size: 1rem;
     }
+    
+    .forgot-password a {
+        font-size: 0.85rem;
+    }
 }
 
 @media (max-width: 480px) {
+    body {
+        padding: 0.5rem;
+    }
+    
+    .login-wrapper {
+        border-radius: 0.75rem;
+    }
+    
+    .login-info {
+        padding: 1.5rem;
+    }
+    
+    .login-info h1 {
+        font-size: 1.75rem;
+    }
+    
+    .login-info h2 {
+        font-size: 1.1rem;
+    }
+    
+    .login-info img {
+        width: 60px;
+        height: 60px;
+        margin-bottom: 1rem;
+    }
+    
     .login-container {
         padding: 1.5rem;
-        width: 98%;
-        border-radius: 1rem;
     }
     
     .login-container h2 {
         font-size: 1.5rem;
-        margin-bottom: 2rem;
+        margin-bottom: 1.5rem;
     }
     
-    .input-group {
-        margin-bottom: 1.5rem;
+    .login-header i {
+        font-size: 2.5rem;
     }
     
     .input-group label {
@@ -335,44 +521,81 @@ body {
     
     .input-group input {
         padding: 0.8rem;
-        font-size: 0.95rem;
+        font-size: 0.9rem;
     }
     
     .login-button {
         padding: 0.8rem;
         font-size: 0.95rem;
     }
+    
+    .forgot-password {
+        margin-top: 1.5rem;
+    }
+    
+    .login-footer {
+        margin-top: 1.5rem;
+    }
 }
 
-@media (min-width: 1920px) {
+/* ===== SOPORTE PARA PANTALLAS PEQUEÑAS EN LANDSCAPE ===== */
+@media (max-height: 600px) and (orientation: landscape) {
+    body {
+        padding: 0.5rem;
+    }
+    
+    .login-wrapper {
+        flex-direction: row;
+        min-height: auto;
+        max-height: 90vh;
+    }
+    
+    .login-info {
+        padding: 1.5rem;
+    }
+    
+    .login-info h1 {
+        font-size: 1.5rem;
+    }
+    
+    .login-info h2 {
+        font-size: 1rem;
+    }
+    
+    .login-info img {
+        width: 50px;
+        height: 50px;
+        margin-bottom: 1rem;
+    }
+    
     .login-container {
-        max-width: 500px;
-        padding: 3.5rem;
+        padding: 1.5rem;
+        overflow-y: auto;
+    }
+    
+    .login-header {
+        margin-bottom: 1rem;
+    }
+    
+    .login-header i {
+        font-size: 2rem;
+        margin-bottom: 0.5rem;
     }
     
     .login-container h2 {
-        font-size: 2.25rem;
+        font-size: 1.5rem;
+        margin-bottom: 0.5rem;
     }
     
-    .input-group input {
-        padding: 1.2rem 1.5rem;
-        font-size: 1.1rem;
+    .input-group {
+        margin-bottom: 1rem;
     }
     
-    .login-button {
-        padding: 1.2rem;
-        font-size: 1.2rem;
-    }
-}
-
-/* ===== MODO OSCURO SIMPLIFICADO ===== */
-@media (prefers-color-scheme: dark) {
-    body {
-        background: linear-gradient(135deg, rgba(15, 23, 42, 0.9), rgba(30, 41, 59, 0.95)), 
-                    url(images/Frame16.png);
+    .forgot-password {
+        margin-top: 1rem;
     }
     
-    .login-container {
-        background: rgba(30, 41, 59, 0.98);
+    .login-footer {
+        margin-top: 1rem;
     }
 }

@@ -172,14 +172,14 @@
                                         <i class="fas fa-phone"></i>
                                         Gestionar Cliente
                                     </button>
-                                    
-                                    <?php if (isset($cliente['proxima_fecha']) && $cliente['proxima_fecha']): ?>
-                                        <div class="next-call">
-                                            <i class="fas fa-clock"></i>
-                                            Próxima llamada: <?php echo date('d/m/Y H:i', strtotime($cliente['proxima_fecha'])); ?>
-                                        </div>
-                                    <?php endif; ?>
                                 </div>
+                                
+                                <?php if (isset($cliente['ultima_tipificacion']) && $cliente['ultima_tipificacion'] === 'volver_llamar' && isset($cliente['proxima_fecha']) && $cliente['proxima_fecha']): ?>
+                                    <div class="next-call-info">
+                                        <i class="fas fa-clock"></i>
+                                        <span class="next-call-text">Próxima llamada: <?php echo date('d/m/Y H:i', strtotime($cliente['proxima_fecha'])); ?></span>
+                                    </div>
+                                <?php endif; ?>
                             </div>
                         <?php endforeach; ?>
                     </div>

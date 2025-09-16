@@ -698,6 +698,9 @@
                 <a href="index.php?action=coordinador_dashboard" class="nav-item" title="Dashboard">
                     <i class="fas fa-tachometer-alt"></i>
                 </a>
+                <a href="index.php?action=coordinador_gestionar_bases" class="nav-item" title="Gestionar Bases">
+                    <i class="fas fa-database"></i>
+                </a>
                 <a href="index.php?action=coordinador_cargar_archivo" class="nav-item active" title="Cargar Archivo">
                     <i class="fas fa-upload"></i>
                 </a>
@@ -765,21 +768,8 @@ Carlos López,11223344,3003333333</pre>
 
                                 <div class="important-note">
                                     <i class="fas fa-exclamation-triangle"></i>
-                                    <p><strong>Nota importante:</strong> El sistema verifica automáticamente que no haya cédulas duplicadas. Si es la primera carga, se creará una nueva base de datos con el nombre que proporciones. Si ya existe una base, se agregarán solo los clientes nuevos a la base existente.</p>
+                                    <p><strong>Nota importante:</strong> El sistema verifica automáticamente que no haya cédulas duplicadas. Puedes crear una nueva base de datos o cargar a una existente.</p>
                                 </div>
-                                
-                                <?php if ($baseExistente): ?>
-                                <div class="base-info" id="baseInfo">
-                                    <i class="fas fa-database"></i>
-                                    <p><strong>Base actual:</strong> Base de datos activa con clientes existentes</p>
-                                    <small>Los nuevos clientes se complementarán con los existentes</small>
-                                </div>
-                                <?php else: ?>
-                                <div class="base-info" id="baseInfo" style="display: none;">
-                                    <i class="fas fa-database"></i>
-                                    <p><strong>Base actual:</strong> <span id="nombreBaseActual"></span></p>
-                                </div>
-                                <?php endif; ?>
                             </div>
                         </div>
                     </div>
@@ -793,27 +783,44 @@ Carlos López,11223344,3003333333</pre>
                             </div>
 
                             <form id="uploadForm" enctype="multipart/form-data" class="upload-form">
-                                <?php if (!$baseExistente): ?>
-                                <!-- Campo de nombre solo para la primera carga -->
-                                <div class="form-group" id="nombreCargaGroup">
-                                    <label for="nombre_carga">Nombre de la Carga:</label>
-                                    <input type="text" id="nombre_carga" name="nombre_carga" 
-                                           placeholder="Ej: Base de datos Enero 2024" class="form-control" required>
-                                    <small class="form-text">Identifica esta carga de clientes (solo para la primera carga)</small>
-                                </div>
-                                <?php else: ?>
-                                <!-- Información de la base existente -->
-                                <div class="form-group base-existente-info">
-                                    <div class="info-card">
-                                        <i class="fas fa-database"></i>
-                                        <div class="info-content">
-                                            <h4>Base de Datos Existente</h4>
-                                            <p>Los nuevos clientes se agregarán a tu base actual</p>
-                                            <small>No es necesario especificar un nombre para cargas adicionales</small>
-                                        </div>
+                                <!-- Selección de opción -->
+                                <div class="form-group">
+                                    <label>Selecciona una opción:</label>
+                                    <div style="display: flex; gap: 15px; margin-top: 10px;">
+                                        <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                                            <input type="radio" name="opcion_carga" value="existente" checked onchange="toggleOpciones()">
+                                            <span>Cargar a base existente</span>
+                                        </label>
+                                        <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                                            <input type="radio" name="opcion_carga" value="nueva" onchange="toggleOpciones()">
+                                            <span>Crear nueva base</span>
+                                        </label>
                                     </div>
                                 </div>
-                                <?php endif; ?>
+
+                                <!-- Selección de base existente -->
+                                <div class="form-group" id="baseExistenteGroup">
+                                    <label for="base_datos_id">Seleccionar Base de Datos:</label>
+                                    <select id="base_datos_id" name="base_datos_id" class="form-control">
+                                        <option value="">Seleccionar base de datos...</option>
+                                        <?php foreach ($basesDatos as $base): ?>
+                                            <option value="<?php echo $base['id']; ?>" 
+                                                    <?php echo (isset($_GET['base_id']) && $_GET['base_id'] == $base['id']) ? 'selected' : ''; ?>>
+                                                <?php echo htmlspecialchars($base['nombre_base']); ?>
+                                                (<?php echo number_format($base['total_clientes_actual']); ?> clientes)
+                                            </option>
+                                        <?php endforeach; ?>
+                                    </select>
+                                    <small class="form-text">Selecciona la base de datos donde cargar los clientes</small>
+                                </div>
+
+                                <!-- Crear nueva base -->
+                                <div class="form-group" id="nuevaBaseGroup" style="display: none;">
+                                    <label for="nombre_nueva_base">Nombre de la Nueva Base:</label>
+                                    <input type="text" id="nombre_nueva_base" name="nombre_nueva_base" 
+                                           placeholder="Ej: Clientes Enero 2024" class="form-control">
+                                    <small class="form-text">Identifica esta nueva base de datos</small>
+                                </div>
                                 
                                 <div class="form-group">
                                     <label for="archivo_csv">Seleccionar Archivo CSV:</label>

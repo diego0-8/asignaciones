@@ -59,7 +59,7 @@ class AsesorController {
         $params = [$asesorId];
         
         if (!empty($search)) {
-            $where_conditions[] = "(nombre_completo LIKE ? OR cedula LIKE ? OR telefono LIKE ?)";
+            $where_conditions[] = "(c.nombre_completo LIKE ? OR c.cedula LIKE ? OR c.telefono LIKE ?)";
             $search_param = "%$search%";
             $params[] = $search_param;
             $params[] = $search_param;
@@ -70,24 +70,24 @@ class AsesorController {
         if (!empty($estado_filter)) {
             if ($estado_filter === 'gestionado') {
                 // Clientes que han sido gestionados (tienen historial de gestión)
-                $where_conditions[] = "id IN (
+                $where_conditions[] = "c.id IN (
                     SELECT DISTINCT cliente_id 
                     FROM historial_gestion 
-                    WHERE cliente_id = clientes.id
+                    WHERE cliente_id = c.id
                 )";
             } elseif ($estado_filter === 'no_gestionado') {
                 // Clientes que NO han sido gestionados (no tienen historial de gestión)
-                $where_conditions[] = "id NOT IN (
+                $where_conditions[] = "c.id NOT IN (
                     SELECT DISTINCT cliente_id 
                     FROM historial_gestion 
-                    WHERE cliente_id = clientes.id
+                    WHERE cliente_id = c.id
                 )";
             }
         }
         
         // Filtro por tipificación (última gestión del cliente)
         if (!empty($tipificacion_filter)) {
-            $where_conditions[] = "id IN (
+            $where_conditions[] = "c.id IN (
                 SELECT DISTINCT hg.cliente_id 
                 FROM historial_gestion hg 
                 WHERE hg.tipo_gestion = ? 
@@ -99,16 +99,46 @@ class AsesorController {
         $where_clause = implode(' AND ', $where_conditions);
         
         // Obtener total de clientes
-        $sql_count = "SELECT COUNT(*) as total FROM clientes WHERE $where_clause";
+        $sql_count = "SELECT COUNT(*) as total FROM clientes c WHERE $where_clause";
         $total_result = $this->db->fetch($sql_count, $params);
         $total_clientes = $total_result['total'];
         
         // Calcular total de páginas
         $total_pages = ceil($total_clientes / $per_page);
         
-        // Obtener clientes con paginación
-        $sql = "SELECT * FROM clientes WHERE $where_clause ORDER BY fecha_creacion DESC LIMIT ? OFFSET ?";
-        $params_with_pagination = array_merge($params, [$per_page, $offset]);
+        // Obtener clientes con paginación y información de próxima llamada
+        $sql = "SELECT 
+                    c.*,
+                    hg.tipo_gestion as ultima_tipificacion,
+                    hg.fecha_proximo_contacto,
+                    hg.hora_proximo_contacto,
+                    CONCAT(DATE(hg.fecha_proximo_contacto), ' ', hg.hora_proximo_contacto) as proxima_fecha
+                FROM clientes c
+                LEFT JOIN (
+                    SELECT 
+                        hg1.cliente_id,
+                        hg1.tipo_gestion,
+                        hg1.fecha_proximo_contacto,
+                        hg1.hora_proximo_contacto,
+                        hg1.fecha_gestion
+                    FROM historial_gestion hg1
+                    INNER JOIN (
+                        SELECT 
+                            cliente_id,
+                            MAX(fecha_gestion) as max_fecha
+                        FROM historial_gestion
+                        WHERE asesor_id = ?
+                        GROUP BY cliente_id
+                    ) hg2 ON hg1.cliente_id = hg2.cliente_id 
+                           AND hg1.fecha_gestion = hg2.max_fecha
+                    WHERE hg1.asesor_id = ?
+                ) hg ON c.id = hg.cliente_id
+                WHERE $where_clause 
+                ORDER BY c.fecha_creacion DESC 
+                LIMIT ? OFFSET ?";
+        
+        // Agregar el asesor_id dos veces para la subconsulta
+        $params_with_pagination = array_merge([$asesorId, $asesorId], $params, [$per_page, $offset]);
         $clientes = $this->db->fetchAll($sql, $params_with_pagination);
         
         include __DIR__ . '/../views/asesor_clientes.php';
@@ -480,6 +510,7 @@ class AsesorController {
         $clienteId = $_POST['cliente_id'] ?? null;
         $tipoContacto = $_POST['tipo_contacto'] ?? null; // Canal de contacto (Llamada, WhatsApp, etc.)
         $tipoGestion = $_POST['tipo_gestion'] ?? null;   // Acción de negocio (asignacion_cita, volver_llamar, etc.)
+        $motivoNoContacto = $_POST['motivo_no_contacto'] ?? null; // Motivo específico de no contacto
         $observaciones = $_POST['observaciones'] ?? null;
         $submitToken = $_POST['submit_token'] ?? null;
         
@@ -488,6 +519,7 @@ class AsesorController {
         error_log("- Cliente ID: " . $clienteId);
         error_log("- Tipo Contacto: " . $tipoContacto);
         error_log("- Tipo Gestión: " . $tipoGestion);
+        error_log("- Motivo No Contacto: " . $motivoNoContacto);
         error_log("- Observaciones: " . $observaciones);
         error_log("- Submit Token: " . $submitToken);
         
@@ -539,6 +571,35 @@ class AsesorController {
             // - tipo_contacto y tipo_gestion deben ser de los ENUM definidos
             $tipoGestion = $tipoGestion ?: 'no_contactado';
             $tipoContacto = $tipoContacto ?: 'no_contactado';
+            
+            // Si es no_contactado y hay motivo específico, agregarlo a las observaciones
+            if ($tipoContacto === 'no_contactado' && $motivoNoContacto) {
+                $motivoTexto = '';
+                switch ($motivoNoContacto) {
+                    case 'no_contesta':
+                        $motivoTexto = 'No contesta';
+                        break;
+                    case 'buzon_voz':
+                        $motivoTexto = 'Buzón de voz';
+                        break;
+                    case 'ocupado':
+                        $motivoTexto = 'Ocupado';
+                        break;
+                    case 'fuera_servicio':
+                        $motivoTexto = 'Fuera de servicio';
+                        break;
+                    case 'numero_incorrecto':
+                        $motivoTexto = 'Número incorrecto';
+                        break;
+                    case 'no_disponible':
+                        $motivoTexto = 'No disponible';
+                        break;
+                    default:
+                        $motivoTexto = ucfirst(str_replace('_', ' ', $motivoNoContacto));
+                }
+                
+                $observaciones = "Motivo: $motivoTexto. " . $observaciones;
+            }
 
             // Determinar resultado estándar del esquema
             $resultado = 'No Contactado';
@@ -582,6 +643,11 @@ class AsesorController {
             } elseif ($tipoGestion === 'volver_llamar') {
                 $fechaProximoContacto = $_POST['fecha_proximo_contacto'] ?? null;
                 $horaProximoContacto = $_POST['hora_proximo_contacto'] ?? null;
+                
+                // Combinar fecha y hora en un solo campo DATETIME
+                if ($fechaProximoContacto && $horaProximoContacto) {
+                    $fechaProximoContacto = $fechaProximoContacto . ' ' . $horaProximoContacto;
+                }
             }
 
             $params = [
@@ -654,6 +720,13 @@ class AsesorController {
                 $sql = "UPDATE clientes SET estado_gestion = 'En Proceso' WHERE id = ?";
                 $this->db->query($sql, [$clienteId]);
                 error_log("Cliente marcado para volver a llamar");
+                
+                // La fecha ya está combinada en fechaProximoContacto
+                if ($fechaProximoContacto) {
+                    $sql = "UPDATE historial_gestion SET fecha_proximo_contacto = ? WHERE id = ?";
+                    $this->db->query($sql, [$fechaProximoContacto, $gestionId]);
+                    error_log("Fecha de próximo contacto actualizada: " . $fechaProximoContacto);
+                }
             }
             
             // Actualizar estado del cliente según el tipo de gestión
@@ -818,13 +891,15 @@ class AsesorController {
                         c.telefono,
                         hg.tipo_gestion,
                         hg.fecha_gestion,
-                        hg.fecha_proxima_accion as proxima_fecha,
+                        CONCAT(DATE(hg.fecha_proximo_contacto), ' ', hg.hora_proximo_contacto) as proxima_fecha,
                         'Volver a Llamar' as tipificacion_nombre
                     FROM clientes c
                     INNER JOIN historial_gestion hg ON c.id = hg.cliente_id
                     WHERE c.asesor_id = ? 
-                    AND hg.proxima_accion = 'volver_llamar'
-                    AND DATE(hg.fecha_proxima_accion) = ?
+                    AND hg.tipo_gestion = 'volver_llamar'
+                    AND DATE(hg.fecha_proximo_contacto) = ?
+                    AND hg.fecha_proximo_contacto IS NOT NULL
+                    AND hg.hora_proximo_contacto IS NOT NULL
                     AND hg.id = (
                         -- Obtener la gestión más reciente de este cliente
                         SELECT MAX(hg2.id)
@@ -839,9 +914,9 @@ class AsesorController {
                         WHERE hg3.cliente_id = c.id
                         AND hg3.asesor_id = ?
                         AND hg3.fecha_gestion > hg.fecha_gestion
-                        AND (hg3.proxima_accion IS NULL OR hg3.proxima_accion != 'volver_llamar')
+                        AND hg3.tipo_gestion != 'volver_llamar'
                     )
-                    ORDER BY hg.proxima_fecha ASC";
+                    ORDER BY hg.fecha_proximo_contacto ASC, hg.hora_proximo_contacto ASC";
             
             $notificaciones = $this->db->fetchAll($sql, [$asesorId, $hoy, $asesorId, $asesorId]);
             
@@ -879,14 +954,16 @@ class AsesorController {
                         c.telefono,
                         hg.tipo_gestion,
                         hg.fecha_gestion,
-                        hg.fecha_proxima_accion as proxima_fecha,
+                        CONCAT(DATE(hg.fecha_proximo_contacto), ' ', hg.hora_proximo_contacto) as proxima_fecha,
                         'Volver a Llamar' as tipificacion_nombre,
-                        DATE(hg.fecha_proxima_accion) as fecha_programada
+                        DATE(hg.fecha_proximo_contacto) as fecha_programada
                     FROM clientes c
                     INNER JOIN historial_gestion hg ON c.id = hg.cliente_id
                     WHERE c.asesor_id = ? 
-                    AND hg.proxima_accion = 'volver_llamar'
-                    AND DATE(hg.fecha_proxima_accion) = ?
+                    AND hg.tipo_gestion = 'volver_llamar'
+                    AND DATE(hg.fecha_proximo_contacto) = ?
+                    AND hg.fecha_proximo_contacto IS NOT NULL
+                    AND hg.hora_proximo_contacto IS NOT NULL
                     AND hg.id = (
                         -- Obtener la gestión más reciente de este cliente
                         SELECT MAX(hg2.id)
@@ -901,9 +978,9 @@ class AsesorController {
                         WHERE hg3.cliente_id = c.id
                         AND hg3.asesor_id = ?
                         AND hg3.fecha_gestion > hg.fecha_gestion
-                        AND (hg3.proxima_accion IS NULL OR hg3.proxima_accion != 'volver_llamar')
+                        AND hg3.tipo_gestion != 'volver_llamar'
                     )
-                    ORDER BY hg.fecha_proxima_accion DESC";
+                    ORDER BY hg.fecha_proximo_contacto DESC, hg.hora_proximo_contacto DESC";
             
             $notificaciones = $this->db->fetchAll($sql, [$asesorId, $fecha, $asesorId, $asesorId]);
             

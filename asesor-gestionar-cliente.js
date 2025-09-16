@@ -11,7 +11,7 @@ let submitToken = null; // Token único por envío
 
 // Inicialización cuando se carga la página
 document.addEventListener('DOMContentLoaded', function() {
-    console.log('Inicializando gestión de cliente...');
+    console.log('🚀 Inicializando gestión de cliente...');
     
     // Obtener IDs del formulario
     const clienteIdInput = document.querySelector('input[name="cliente_id"]');
@@ -20,13 +20,32 @@ document.addEventListener('DOMContentLoaded', function() {
         console.log('Cliente ID:', currentClienteId);
     }
     
+    // Verificar que los elementos del formulario existen
+    const tipoContacto = document.getElementById('tipo_contacto');
+    const opcionesNoContacto = document.getElementById('opciones_no_contacto');
+    const motivoNoContacto = document.getElementById('motivo_no_contacto');
+    
+    console.log('Elementos del formulario:', {
+        tipoContacto: !!tipoContacto,
+        opcionesNoContacto: !!opcionesNoContacto,
+        motivoNoContacto: !!motivoNoContacto
+    });
+    
+    if (!opcionesNoContacto) {
+        console.error('❌ CRÍTICO: Elemento opciones_no_contacto no encontrado en el DOM');
+    }
+    
+    if (!motivoNoContacto) {
+        console.error('❌ CRÍTICO: Elemento motivo_no_contacto no encontrado en el DOM');
+    }
+    
     // Inicializar contador de caracteres
     initCharCounter();
     
     // Configurar eventos del formulario
     setupFormEvents();
     
-    console.log('Gestión de cliente inicializada correctamente');
+    console.log('✅ Gestión de cliente inicializada correctamente');
 });
 
 /**
@@ -79,29 +98,75 @@ function setupFormEvents() {
  * Mostrar opciones de gestión cuando se selecciona "Contactado"
  */
 function mostrarOpcionesGestion() {
+    console.log('🔍 mostrarOpcionesGestion() ejecutada');
+    
     const tipoContacto = document.getElementById('tipo_contacto').value;
     const opcionesGestion = document.getElementById('opciones_gestion');
+    const opcionesNoContacto = document.getElementById('opciones_no_contacto');
     const tipoGestionSelect = document.getElementById('tipo_gestion');
+    const motivoNoContactoSelect = document.getElementById('motivo_no_contacto');
+    
+    console.log('Tipo de contacto seleccionado:', tipoContacto);
+    console.log('Elementos encontrados:', {
+        opcionesGestion: !!opcionesGestion,
+        opcionesNoContacto: !!opcionesNoContacto,
+        tipoGestionSelect: !!tipoGestionSelect,
+        motivoNoContactoSelect: !!motivoNoContactoSelect
+    });
+    
+    // Ocultar todos los campos primero
+    if (opcionesGestion) {
+        opcionesGestion.style.display = 'none';
+        opcionesGestion.classList.remove('fade-in');
+    }
+    if (opcionesNoContacto) {
+        opcionesNoContacto.style.display = 'none';
+        opcionesNoContacto.classList.remove('fade-in');
+    }
+    ocultarTodosLosCampos();
     
     if (tipoContacto === 'contactado') {
-        opcionesGestion.style.display = 'block';
-        opcionesGestion.classList.add('fade-in');
+        console.log('Mostrando opciones de gestión para contactado');
+        // Mostrar opciones de gestión para contactado
+        if (opcionesGestion) {
+            opcionesGestion.style.display = 'block';
+            opcionesGestion.classList.add('fade-in');
+        }
         // Agregar required cuando se muestra
         if (tipoGestionSelect) {
             tipoGestionSelect.setAttribute('required', 'required');
         }
-    } else {
-        opcionesGestion.style.display = 'none';
-        opcionesGestion.classList.remove('fade-in');
-        
-        // Quitar required cuando se oculta
-        if (tipoGestionSelect) {
-            tipoGestionSelect.removeAttribute('required');
-            tipoGestionSelect.value = ''; // Limpiar valor
+    } else if (tipoContacto === 'no_contactado') {
+        console.log('Mostrando opciones de no contacto');
+        // Mostrar opciones de no contacto
+        if (opcionesNoContacto) {
+            opcionesNoContacto.style.display = 'block';
+            opcionesNoContacto.classList.add('fade-in');
+            console.log('Desplegable de no contacto mostrado');
+        } else {
+            console.error('❌ Elemento opciones_no_contacto no encontrado');
+        }
+        // Agregar required cuando se muestra
+        if (motivoNoContactoSelect) {
+            motivoNoContactoSelect.setAttribute('required', 'required');
         }
         
-        // Ocultar campos específicos también
-        ocultarTodosLosCampos();
+        // Establecer tipo_gestion como 'no_contactado' y remover required
+        if (tipoGestionSelect) {
+            tipoGestionSelect.value = 'no_contactado';
+            tipoGestionSelect.removeAttribute('required'); // Remover required para evitar conflicto
+        }
+    } else {
+        console.log('Limpiando campos');
+        // Limpiar todos los campos
+        if (tipoGestionSelect) {
+            tipoGestionSelect.removeAttribute('required');
+            tipoGestionSelect.value = '';
+        }
+        if (motivoNoContactoSelect) {
+            motivoNoContactoSelect.removeAttribute('required');
+            motivoNoContactoSelect.value = '';
+        }
     }
 }
 
@@ -117,13 +182,32 @@ function mostrarCamposEspecificos() {
     // Mostrar campos según el tipo seleccionado
     switch (tipoGestion) {
         case 'asignacion_cita':
-            document.getElementById('campos_cita').style.display = 'block';
-            document.getElementById('campos_cita').classList.add('fade-in');
+            const camposCita = document.getElementById('campos_cita');
+            camposCita.style.display = 'block';
+            camposCita.classList.add('fade-in');
+            
+            // Agregar required a los campos de cita
+            const inputsCita = camposCita.querySelectorAll('input[type="date"], input[type="time"], input[type="text"]');
+            inputsCita.forEach(input => {
+                if (input.name === 'fecha_cita' || input.name === 'hora_cita' || input.name === 'lugar_cita') {
+                    input.setAttribute('required', 'required');
+                }
+            });
             break;
             
         case 'volver_llamar':
-            document.getElementById('campos_volver_llamar').style.display = 'block';
-            document.getElementById('campos_volver_llamar').classList.add('fade-in');
+            const camposVolverLlamar = document.getElementById('campos_volver_llamar');
+            camposVolverLlamar.style.display = 'block';
+            camposVolverLlamar.classList.add('fade-in');
+            
+            // Agregar required a los campos de volver a llamar
+            const fechaProximo = document.getElementById('fecha_proximo_contacto');
+            const horaProximo = document.getElementById('hora_proximo_contacto');
+            if (fechaProximo) fechaProximo.setAttribute('required', 'required');
+            if (horaProximo) horaProximo.setAttribute('required', 'required');
+            
+            // Configurar validaciones en tiempo real
+            configurarValidacionesVolverLlamar();
             break;
             
         case 'fuera_ciudad':
@@ -147,6 +231,12 @@ function ocultarTodosLosCampos() {
         if (campo) {
             campo.style.display = 'none';
             campo.classList.remove('fade-in');
+            
+            // Remover required de todos los inputs dentro del campo oculto
+            const inputs = campo.querySelectorAll('input[required], select[required]');
+            inputs.forEach(input => {
+                input.removeAttribute('required');
+            });
         }
     });
 }
@@ -193,6 +283,22 @@ function validarFormulario() {
             console.log('❌ Validación de campos específicos falló');
             return false;
         }
+    } else if (tipoContacto === 'no_contactado') {
+        // Para no_contactado, validar motivo de no contacto
+        const motivoNoContacto = document.getElementById('motivo_no_contacto').value;
+        console.log('🚫 Motivo de no contacto:', motivoNoContacto);
+        
+        if (!motivoNoContacto) {
+            console.log('❌ Falta motivo de no contacto');
+            mostrarError('Debes seleccionar el motivo de no contacto');
+            return false;
+        }
+        
+        // Asegurar que tipo_gestion sea 'no_contactado'
+        const tipoGestionSelect = document.getElementById('tipo_gestion');
+        if (tipoGestionSelect) {
+            tipoGestionSelect.value = 'no_contactado';
+        }
     }
     
     console.log('✅ Validación exitosa');
@@ -223,6 +329,36 @@ function validarCamposEspecificos(tipoGestion) {
                 mostrarError('Para programar una nueva llamada, debes especificar fecha y hora');
                 return false;
             }
+            
+            // Validar que la fecha sea futura
+            const fechaSeleccionada = new Date(fechaProximo);
+            const hoy = new Date();
+            hoy.setHours(0, 0, 0, 0); // Resetear horas para comparar solo fechas
+            
+            if (fechaSeleccionada <= hoy) {
+                mostrarError('La fecha debe ser futura (a partir de mañana)');
+                return false;
+            }
+            
+            // Validar que sea día laboral (lunes a sábado)
+            const diaSemana = fechaSeleccionada.getDay(); // 0=domingo, 1=lunes, ..., 6=sábado
+            if (diaSemana === 0) { // Domingo
+                mostrarError('No se pueden programar llamadas los domingos. Selecciona un día de lunes a sábado');
+                return false;
+            }
+            
+            // Validar horario (7:30 AM - 6:00 PM)
+            const hora = parseInt(horaProximo.split(':')[0]);
+            const minuto = parseInt(horaProximo.split(':')[1]);
+            const horaEnMinutos = hora * 60 + minuto;
+            const horaInicio = 7 * 60 + 30; // 7:30 AM = 450 minutos
+            const horaFin = 18 * 60; // 6:00 PM = 1080 minutos
+            
+            if (horaEnMinutos < horaInicio || horaEnMinutos > horaFin) {
+                mostrarError('El horario debe estar entre 7:30 AM y 6:00 PM');
+                return false;
+            }
+            
             break;
     }
     
@@ -233,16 +369,20 @@ function validarCamposEspecificos(tipoGestion) {
  * Procesar la gestión del cliente
  */
 function procesarGestion(event) {
-    event.preventDefault();
-    
-    console.log('🔍 Procesando gestión del cliente...');
+    console.log('🚀 procesarGestion() llamada');
     console.log('📝 Evento:', event);
+    
+    if (event) {
+        event.preventDefault();
+    }
     
     // PREVENIR DOBLE ENVÍO
     if (isSubmitting) {
         console.log('⚠️ Formulario ya se está enviando, ignorando clic adicional');
         return false;
     }
+    
+    console.log('🔍 Iniciando validación...');
     
     // Validar formulario
     if (!validarFormulario()) {
@@ -262,7 +402,15 @@ function procesarGestion(event) {
     mostrarCargando();
     
     // Recopilar datos del formulario
-    const formData = new FormData(event.target);
+    const form = document.getElementById('gestionForm');
+    if (!form) {
+        console.error('❌ Formulario no encontrado');
+        mostrarError('Error: Formulario no encontrado');
+        resetSubmitState();
+        return false;
+    }
+    
+    const formData = new FormData(form);
     
     // Agregar datos adicionales
     formData.append('asesor_id', getAsesorId());
@@ -282,7 +430,8 @@ function procesarGestion(event) {
  * Enviar gestión al servidor
  */
 function enviarGestion(formData) {
-    console.log('Enviando gestión al servidor...');
+    console.log('📡 Enviando gestión al servidor...');
+    console.log('🔒 Token actual:', submitToken);
     
     // Verificar que el token sea válido
     if (!submitToken) {
@@ -292,20 +441,25 @@ function enviarGestion(formData) {
         return;
     }
     
+    console.log('🌐 Realizando petición a: index.php?action=asesor_guardar_gestion');
+    
     fetch('index.php?action=asesor_guardar_gestion', {
         method: 'POST',
         body: formData
     })
     .then(response => {
+        console.log('📥 Respuesta recibida:', response.status, response.statusText);
+        
         if (!response.ok) {
             throw new Error(`HTTP ${response.status}: ${response.statusText}`);
         }
         return response.json();
     })
     .then(data => {
-        console.log('Respuesta del servidor:', data);
+        console.log('📋 Datos del servidor:', data);
         
         if (data.success) {
+            console.log('✅ Guardado exitoso');
             mostrarExito(data.message || 'Gestión guardada correctamente');
             
             // Limpiar formulario
@@ -316,14 +470,16 @@ function enviarGestion(formData) {
                 recargarHistorial();
             }
         } else {
+            console.log('❌ Error del servidor:', data.error);
             mostrarError(data.error || 'Error al guardar la gestión');
         }
     })
     .catch(error => {
-        console.error('Error al enviar gestión:', error);
+        console.error('💥 Error al enviar gestión:', error);
         mostrarError('Error de conexión: ' + error.message);
     })
     .finally(() => {
+        console.log('🏁 Finalizando envío...');
         ocultarCargando();
         // Resetear estado de envío
         resetSubmitState();
@@ -733,5 +889,127 @@ document.addEventListener('keydown', function(event) {
         cerrarModal();
     }
 });
+
+/**
+ * Configurar validaciones en tiempo real para volver a llamar
+ */
+function configurarValidacionesVolverLlamar() {
+    const fechaInput = document.getElementById('fecha_proximo_contacto');
+    const horaInput = document.getElementById('hora_proximo_contacto');
+    
+    if (fechaInput) {
+        // Validar fecha cuando cambie
+        fechaInput.addEventListener('change', function() {
+            validarFechaVolverLlamar();
+        });
+        
+        // Establecer fecha mínima (mañana)
+        const manana = new Date();
+        manana.setDate(manana.getDate() + 1);
+        fechaInput.min = manana.toISOString().split('T')[0];
+    }
+    
+    if (horaInput) {
+        // Validar hora cuando cambie
+        horaInput.addEventListener('change', function() {
+            validarHoraVolverLlamar();
+        });
+        
+        // Establecer límites de hora
+        horaInput.min = '07:30';
+        horaInput.max = '18:00';
+    }
+}
+
+/**
+ * Validar fecha para volver a llamar
+ */
+function validarFechaVolverLlamar() {
+    const fechaInput = document.getElementById('fecha_proximo_contacto');
+    const fecha = new Date(fechaInput.value);
+    const hoy = new Date();
+    hoy.setHours(0, 0, 0, 0);
+    
+    // Remover mensajes de error previos
+    limpiarMensajesError(fechaInput);
+    
+    if (fecha <= hoy) {
+        mostrarErrorCampo(fechaInput, 'La fecha debe ser futura (a partir de mañana)');
+        return false;
+    }
+    
+    // Validar que sea día laboral (lunes a sábado)
+    const diaSemana = fecha.getDay();
+    if (diaSemana === 0) { // Domingo
+        mostrarErrorCampo(fechaInput, 'No se pueden programar llamadas los domingos');
+        return false;
+    }
+    
+    return true;
+}
+
+/**
+ * Validar hora para volver a llamar
+ */
+function validarHoraVolverLlamar() {
+    const horaInput = document.getElementById('hora_proximo_contacto');
+    const hora = horaInput.value;
+    
+    // Remover mensajes de error previos
+    limpiarMensajesError(horaInput);
+    
+    if (!hora) return true;
+    
+    const [horaStr, minutoStr] = hora.split(':');
+    const horaNum = parseInt(horaStr);
+    const minutoNum = parseInt(minutoStr);
+    const horaEnMinutos = horaNum * 60 + minutoNum;
+    
+    const horaInicio = 7 * 60 + 30; // 7:30 AM
+    const horaFin = 18 * 60; // 6:00 PM
+    
+    if (horaEnMinutos < horaInicio || horaEnMinutos > horaFin) {
+        mostrarErrorCampo(horaInput, 'El horario debe estar entre 7:30 AM y 6:00 PM');
+        return false;
+    }
+    
+    return true;
+}
+
+/**
+ * Mostrar error en un campo específico
+ */
+function mostrarErrorCampo(campo, mensaje) {
+    // Remover error previo
+    limpiarMensajesError(campo);
+    
+    // Crear elemento de error
+    const errorDiv = document.createElement('div');
+    errorDiv.className = 'field-error';
+    errorDiv.style.color = '#dc3545';
+    errorDiv.style.fontSize = '0.875rem';
+    errorDiv.style.marginTop = '4px';
+    errorDiv.textContent = mensaje;
+    
+    // Insertar después del campo
+    campo.parentNode.insertBefore(errorDiv, campo.nextSibling);
+    
+    // Agregar clase de error al campo
+    campo.classList.add('error');
+}
+
+/**
+ * Limpiar mensajes de error de un campo
+ */
+function limpiarMensajesError(campo) {
+    // Remover clase de error
+    campo.classList.remove('error');
+    
+    // Remover mensajes de error existentes
+    const errorDiv = campo.parentNode.querySelector('.field-error');
+    if (errorDiv) {
+        errorDiv.remove();
+    }
+}
 
 console.log('Script de gestión de cliente cargado correctamente');

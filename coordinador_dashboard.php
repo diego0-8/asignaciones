@@ -23,6 +23,9 @@
                 <a href="index.php?action=coordinador_cargar_archivo" class="nav-item" title="Cargar Archivo">
                     <i class="fas fa-upload"></i>
                 </a>
+                <a href="index.php?action=coordinador_gestion" class="nav-item" title="Gestión">
+                    <i class="fas fa-database"></i>
+                </a>
                 <a href="index.php?action=coordinador_tareas" class="nav-item" title="Tareas">
                     <i class="fas fa-tasks"></i>
                 </a>

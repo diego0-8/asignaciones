@@ -100,6 +100,32 @@ function handleFileSelection(event) {
 }
 
 /**
+ * Toggle entre opciones de carga
+ */
+function toggleOpciones() {
+    const opcionExistente = document.querySelector('input[name="opcion_carga"][value="existente"]');
+    const opcionNueva = document.querySelector('input[name="opcion_carga"][value="nueva"]');
+    const baseExistenteGroup = document.getElementById('baseExistenteGroup');
+    const nuevaBaseGroup = document.getElementById('nuevaBaseGroup');
+    
+    if (opcionExistente.checked) {
+        baseExistenteGroup.style.display = 'block';
+        nuevaBaseGroup.style.display = 'none';
+        
+        // Hacer obligatorio el select de base existente
+        document.getElementById('base_datos_id').required = true;
+        document.getElementById('nombre_nueva_base').required = false;
+    } else if (opcionNueva.checked) {
+        baseExistenteGroup.style.display = 'none';
+        nuevaBaseGroup.style.display = 'block';
+        
+        // Hacer obligatorio el input de nombre nueva base
+        document.getElementById('base_datos_id').required = false;
+        document.getElementById('nombre_nueva_base').required = true;
+    }
+}
+
+/**
  * Mostrar información del archivo seleccionado
  */
 function handleNombreCargaChange(event) {
@@ -203,8 +229,27 @@ function handleFileUpload(event) {
     
     // Preparar datos
     formData.append('archivo', archivo);
-    if (nombreCargaInput) {
-        formData.append('nombre_carga', nombreCarga);
+    
+    // Validar opción seleccionada
+    const opcionExistente = document.querySelector('input[name="opcion_carga"][value="existente"]');
+    const opcionNueva = document.querySelector('input[name="opcion_carga"][value="nueva"]');
+    
+    if (opcionExistente.checked) {
+        const baseDatosId = document.getElementById('base_datos_id').value;
+        if (!baseDatosId) {
+            mostrarAlerta('❌ Por favor selecciona una base de datos', 'error');
+            return;
+        }
+        formData.append('base_datos_id', baseDatosId);
+        formData.append('crear_nueva_base', 'false');
+    } else if (opcionNueva.checked) {
+        const nombreNuevaBase = document.getElementById('nombre_nueva_base').value.trim();
+        if (!nombreNuevaBase) {
+            mostrarAlerta('❌ Por favor ingresa un nombre para la nueva base', 'error');
+            return;
+        }
+        formData.append('nombre_nueva_base', nombreNuevaBase);
+        formData.append('crear_nueva_base', 'true');
     }
     
     console.log('✅ Datos preparados, iniciando carga...');

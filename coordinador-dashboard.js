@@ -5,15 +5,31 @@
 
 // Variables globales
 let asesorActual = null;
+let asesorActualId = null;
 let clientesAsesor = [];
 let clientesFiltrados = [];
 
 // ===== FUNCIONES DE MODALES =====
 
 function abrirModalAsesor(asesorId) {
+    console.log('🚀 Abriendo modal para asesor:', asesorId);
+    
+    // Guardar el ID del asesor actual
     asesorActual = asesorId;
+    asesorActualId = asesorId;
+    
+    // Abrir primero el modal para asegurar que sus nodos existen en el DOM
+    const modal = document.getElementById('asesorModal');
+    if (modal) {
+        modal.style.display = 'block';
+        console.log('✅ Modal abierto correctamente');
+    } else {
+        console.error('❌ Modal no encontrado');
+        return;
+    }
+    
+    // Cargar detalles del asesor
     cargarDetallesAsesor(asesorId);
-    document.getElementById('asesorModal').style.display = 'block';
 }
 
 function cerrarModalAsesor() {
@@ -41,29 +57,46 @@ function cerrarModalTransferir() {
 // ===== FUNCIONES DE CARGA DE DATOS =====
 
 function cargarDetallesAsesor(asesorId) {
+    console.log('📡 Iniciando carga de detalles para asesor:', asesorId);
+    
     // Guardar el ID del asesor actual
     asesorActualId = asesorId;
     
     // Mostrar loading
     mostrarLoading();
     
-    fetch(`index.php?action=coordinador_obtener_detalles_asesor&asesor_id=${asesorId}`)
-        .then(response => response.json())
+    const url = `index.php?action=coordinador_obtener_detalles_asesor&asesor_id=${asesorId}`;
+    console.log('🌐 Haciendo fetch a:', url);
+    
+    fetch(url)
+        .then(response => {
+            console.log('📥 Respuesta recibida:', response);
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            return response.json();
+        })
         .then(data => {
+            console.log('📊 Datos recibidos:', data);
             if (data.success) {
+                console.log('✅ Datos cargados exitosamente');
                 mostrarDetallesAsesor(data.asesor, data.clientes);
                 clientesAsesor = data.clientes;
                 clientesFiltrados = [...data.clientes];
                 aplicarFiltros();
             } else {
-                mostrarAlerta(data.error, 'error');
+                console.error('❌ Error en la respuesta:', data.error);
+                mostrarErrorModal('No se pudieron cargar los detalles del asesor.', data.error || 'Error desconocido');
+                mostrarAlerta(data.error || 'Error al cargar detalles del asesor', 'error');
             }
         })
         .catch(error => {
-            console.error('Error:', error);
+            console.error('💥 Error en fetch:', error);
+            mostrarErrorModal('Error de conexión al cargar detalles del asesor.', error?.message || String(error));
             mostrarAlerta('Error al cargar detalles del asesor', 'error');
         })
         .finally(() => {
+            console.log('🏁 Finalizando carga de detalles');
             ocultarLoading();
         });
 }
@@ -104,25 +137,32 @@ function filtrarPorEstado() {
 }
 
 function aplicarFiltros() {
-    const filtroTipificacion = document.getElementById('filterTipificacion').value;
-    const filtroEstado = document.getElementById('filterEstado').value;
+    const tipSel = document.getElementById('filterTipificacion');
+    const estSel = document.getElementById('filterEstado');
+    const filtroTipificacion = tipSel ? tipSel.value : '';
+    const filtroEstado = estSel ? estSel.value : '';
+    
+    console.log('🔍 Aplicando filtros:', { filtroTipificacion, filtroEstado });
     
     clientesFiltrados = clientesAsesor.filter(cliente => {
         let cumpleTipificacion = true;
         let cumpleEstado = true;
         
-        // Filtro de tipificación
+        // Filtro de tipificación (usar ultima_tipificacion del backend)
         if (filtroTipificacion) {
             if (filtroTipificacion === 'contactado') {
-                cumpleTipificacion = ['asignacion_cita', 'volver_llamar', 'fuera_ciudad', 'no_interesa'].includes(cliente.tipificacion);
+                // Clientes que han sido contactados exitosamente
+                cumpleTipificacion = ['asignacion_cita', 'volver_llamar', 'fuera_ciudad', 'no_interesa'].includes(cliente.ultima_tipificacion);
             } else if (filtroTipificacion === 'no_contactado') {
-                cumpleTipificacion = ['no_contactado', 'disponible'].includes(cliente.tipificacion);
+                // Clientes que no han sido contactados
+                cumpleTipificacion = ['no_contactado', 'disponible'].includes(cliente.ultima_tipificacion);
             } else {
-                cumpleTipificacion = cliente.tipificacion === filtroTipificacion;
+                // Filtro específico por tipificación
+                cumpleTipificacion = cliente.ultima_tipificacion === filtroTipificacion;
             }
         }
         
-        // Filtro de estado
+        // Filtro de estado de gestión
         if (filtroEstado) {
             cumpleEstado = cliente.estado_gestion === filtroEstado;
         }
@@ -130,7 +170,9 @@ function aplicarFiltros() {
         return cumpleTipificacion && cumpleEstado;
     });
     
+    console.log(`✅ Filtros aplicados: ${clientesFiltrados.length} de ${clientesAsesor.length} clientes`);
     mostrarClientesFiltrados();
+    actualizarContadorFiltros();
 }
 
 function mostrarClientesEnTabla(clientes) {
@@ -139,6 +181,8 @@ function mostrarClientesEnTabla(clientes) {
     
     if (!tbody) {
         console.error('No se encontró el tbody de la tabla de clientes');
+        // Intentar una vez más en el siguiente ciclo del event loop
+        setTimeout(() => mostrarClientesEnTabla(clientes), 0);
         return;
     }
     
@@ -189,30 +233,49 @@ function mostrarClientesFiltrados() {
     const noClientesMessage = document.getElementById('noClientesMessage');
     
     if (clientesFiltrados.length === 0) {
-        tbody.innerHTML = '';
+        if (tbody) tbody.innerHTML = '';
         if (noClientesMessage) noClientesMessage.style.display = 'block';
+        actualizarContadorFiltros();
         return;
     }
     
-        noClientesMessage.style.display = 'none';
+    if (noClientesMessage) noClientesMessage.style.display = 'none';
     
+    if (!tbody) return;
+    
+    // Crear filas con mejor formato y badges
     tbody.innerHTML = clientesFiltrados.map(cliente => `
-        <tr>
-            <td>${cliente.nombre_completo}</td>
-            <td>${cliente.cedula}</td>
-                <td>${cliente.telefono || 'N/A'}</td>
-                <td>
-                <span class="estado-badge estado-${cliente.estado_gestion.toLowerCase().replace(' ', '-')}">
-                    ${cliente.estado_gestion}
-                    </span>
-                </td>
-            <td>${cliente.ultima_gestion || 'N/A'}</td>
-                <td>
-                <span class="tipificacion-badge tipificacion-${cliente.tipificacion || 'disponible'}">
-                    ${obtenerNombreTipificacion(cliente.tipificacion)}
-                    </span>
-                </td>
-                <td>
+        <tr class="cliente-row" data-cliente-id="${cliente.id}">
+            <td>
+                <div class="cliente-info">
+                    <strong>${cliente.nombre_completo}</strong>
+                    <small class="text-muted">ID: ${cliente.id}</small>
+                </div>
+            </td>
+            <td>
+                <code class="cedula-code">${cliente.cedula}</code>
+            </td>
+            <td>
+                <span class="telefono-info">
+                    <i class="fas fa-phone"></i> ${cliente.telefono || 'N/A'}
+                </span>
+            </td>
+            <td>
+                <span class="estado-badge estado-${getEstadoBadgeClass(cliente.estado_gestion)}">
+                    ${cliente.estado_gestion || 'N/A'}
+                </span>
+            </td>
+            <td>
+                <span class="fecha-info">
+                    ${formatearFecha(cliente.ultima_gestion) || 'N/A'}
+                </span>
+            </td>
+            <td>
+                <span class="tipificacion-badge tipificacion-${getTipificacionBadgeClass(cliente.ultima_tipificacion)}">
+                    ${obtenerNombreTipificacion(cliente.ultima_tipificacion)}
+                </span>
+            </td>
+            <td>
                 <div class="acciones-cliente">
                     <button class="btn-accion btn-transferir" onclick="abrirModalTransferir('${cliente.id}', '${cliente.nombre_completo}', '${cliente.cedula}', '${asesorActual}')" title="Transferir Cliente">
                         <i class="fas fa-exchange-alt"></i>
@@ -220,10 +283,15 @@ function mostrarClientesFiltrados() {
                     <button class="btn-accion btn-liberar" onclick="liberarCliente('${cliente.id}')" title="Liberar Cliente">
                         <i class="fas fa-unlock"></i>
                     </button>
+                    <button class="btn-accion btn-ver" onclick="verDetallesCliente(${cliente.id})" title="Ver Detalles">
+                        <i class="fas fa-eye"></i>
+                    </button>
                 </div>
-                </td>
-            </tr>
+            </td>
+        </tr>
     `).join('');
+    
+    actualizarContadorFiltros();
 }
 
 function obtenerNombreTipificacion(tipificacion) {
@@ -324,16 +392,45 @@ function buscarCliente() {
     const cedula = document.getElementById('searchCedula').value.trim();
     
     if (!cedula) {
-        clientesFiltrados = [...clientesAsesor];
+        // Si no hay búsqueda, aplicar solo los filtros activos
         aplicarFiltros();
         return;
     }
     
-    clientesFiltrados = clientesAsesor.filter(cliente => 
-        cliente.cedula.includes(cedula)
-    );
+    console.log('🔍 Buscando cliente con cédula:', cedula);
     
+    // Aplicar búsqueda y filtros combinados
+    const filtroTipificacion = document.getElementById('filterTipificacion')?.value || '';
+    const filtroEstado = document.getElementById('filterEstado')?.value || '';
+    
+    clientesFiltrados = clientesAsesor.filter(cliente => {
+        // Búsqueda por cédula
+        const cumpleBusqueda = cliente.cedula.includes(cedula);
+        
+        // Filtros de tipificación y estado
+        let cumpleTipificacion = true;
+        let cumpleEstado = true;
+        
+        if (filtroTipificacion) {
+            if (filtroTipificacion === 'contactado') {
+                cumpleTipificacion = ['asignacion_cita', 'volver_llamar', 'fuera_ciudad', 'no_interesa'].includes(cliente.ultima_tipificacion);
+            } else if (filtroTipificacion === 'no_contactado') {
+                cumpleTipificacion = ['no_contactado', 'disponible'].includes(cliente.ultima_tipificacion);
+            } else {
+                cumpleTipificacion = cliente.ultima_tipificacion === filtroTipificacion;
+            }
+        }
+        
+        if (filtroEstado) {
+            cumpleEstado = cliente.estado_gestion === filtroEstado;
+        }
+        
+        return cumpleBusqueda && cumpleTipificacion && cumpleEstado;
+    });
+    
+    console.log(`🔍 Búsqueda completada: ${clientesFiltrados.length} clientes encontrados`);
     mostrarClientesFiltrados();
+    actualizarContadorFiltros();
 }
 
 // ===== FUNCIONES DE UTILIDAD =====
@@ -353,14 +450,53 @@ function getBadgeClass(estado) {
 }
 
 function getTipificacionBadgeClass(tipificacion) {
+    if (!tipificacion) return 'disponible';
+    
     switch (tipificacion) {
-        case 'asignacion_cita': return 'success';
-        case 'volver_llamar': return 'warning';
-        case 'fuera_ciudad': return 'info';
-        case 'no_interesa': return 'danger';
-        case 'contactado': return 'success';
-        case 'no_contactado': return 'secondary';
-        default: return 'secondary';
+        case 'asignacion_cita': return 'asignacion_cita';
+        case 'volver_llamar': return 'volver_llamar';
+        case 'fuera_ciudad': return 'fuera_ciudad';
+        case 'no_interesa': return 'no_interesa';
+        case 'contactado': return 'contactado';
+        case 'no_contactado': return 'no_contactado';
+        case 'disponible': return 'disponible';
+        default: return 'disponible';
+    }
+}
+
+function getEstadoBadgeClass(estado) {
+    if (!estado) return 'default';
+    
+    // Convertir a formato CSS-friendly
+    return estado.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
+}
+
+function formatearFecha(fecha) {
+    if (!fecha) return null;
+    
+    try {
+        const fechaObj = new Date(fecha);
+        if (isNaN(fechaObj.getTime())) return fecha; // Si no es una fecha válida, devolver original
+        
+        const ahora = new Date();
+        const diffTime = Math.abs(ahora - fechaObj);
+        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+        
+        if (diffDays === 0) {
+            return 'Hoy';
+        } else if (diffDays === 1) {
+            return 'Ayer';
+        } else if (diffDays < 7) {
+            return `Hace ${diffDays} días`;
+        } else {
+            return fechaObj.toLocaleDateString('es-ES', {
+                day: '2-digit',
+                month: '2-digit',
+                year: 'numeric'
+            });
+        }
+    } catch (error) {
+        return fecha; // Si hay error, devolver fecha original
     }
 }
 
@@ -397,13 +533,57 @@ function mostrarDetallesAsesor(asesor, clientes) {
 }
 
 function mostrarLoading() {
-    // Implementar indicador de carga
+    // Agregar overlay de carga sin destruir el contenido del modal
     const modalBody = document.querySelector('#asesorModal .modal-body');
-    modalBody.innerHTML = '<div class="loading">Cargando...</div>';
+    if (!modalBody) return;
+    let overlay = modalBody.querySelector('.loading-overlay');
+    if (!overlay) {
+        overlay = document.createElement('div');
+        overlay.className = 'loading-overlay';
+        overlay.innerHTML = '<div class="loading">Cargando...</div>';
+        overlay.style.position = 'absolute';
+        overlay.style.inset = '0';
+        overlay.style.display = 'flex';
+        overlay.style.alignItems = 'center';
+        overlay.style.justifyContent = 'center';
+        overlay.style.background = 'rgba(255,255,255,0.8)';
+        overlay.style.zIndex = '10';
+        // Asegurar posicionamiento relativo del contenedor
+        const parent = modalBody.parentElement;
+        if (parent && getComputedStyle(parent).position === 'static') {
+            parent.style.position = 'relative';
+        }
+        modalBody.appendChild(overlay);
+    } else {
+        overlay.style.display = 'flex';
+    }
 }
 
 function ocultarLoading() {
-    // El contenido se carga en mostrarDetallesAsesor
+    const modalBody = document.querySelector('#asesorModal .modal-body');
+    if (!modalBody) return;
+    const overlay = modalBody.querySelector('.loading-overlay');
+    if (overlay) overlay.style.display = 'none';
+}
+
+// Muestra errores dentro del modal para depuración rápida
+function mostrarErrorModal(titulo, detalle) {
+    const modal = document.getElementById('asesorModal');
+    if (modal && modal.style.display !== 'block') {
+        modal.style.display = 'block';
+    }
+    const modalBody = document.querySelector('#asesorModal .modal-body');
+    if (!modalBody) return;
+    const html = `
+        <div class="error-box" style="border:1px solid #f5c2c7;background:#f8d7da;color:#842029;padding:12px;border-radius:6px;margin-bottom:12px;">
+            <strong>${titulo}</strong>
+            <pre style="white-space:pre-wrap;margin:8px 0 0;font-size:12px;">${(detalle || '').toString()}</pre>
+        </div>
+    `;
+    // Insertar el error arriba, conservando el contenido existente
+    const wrapper = document.createElement('div');
+    wrapper.innerHTML = html;
+    modalBody.prepend(wrapper.firstElementChild);
 }
 
 function mostrarAlerta(mensaje, tipo) {
@@ -494,25 +674,116 @@ function transferirCliente(clienteId) {
     });
 }
 
-// Variable global para el ID del asesor actual
-let asesorActualId = null;
+// Variable global para el ID del asesor actual (ya declarada arriba)
+// asesorActualId = null; // Comentado porque ya está declarada arriba
+
+// ===== FUNCIONES AUXILIARES =====
+
+function actualizarContadorFiltros() {
+    const totalClientes = clientesAsesor.length;
+    const clientesFiltradosCount = clientesFiltrados.length;
+    
+    // Actualizar contador en el modal si existe
+    const contadorElement = document.getElementById('contadorFiltros');
+    if (contadorElement) {
+        contadorElement.innerHTML = `
+            <span class="contador-info">
+                <i class="fas fa-filter"></i> 
+                Mostrando ${clientesFiltradosCount} de ${totalClientes} clientes
+            </span>
+        `;
+    }
+    
+    // Actualizar título de la tabla
+    const tituloTabla = document.querySelector('.clientes-section h4');
+    if (tituloTabla) {
+        tituloTabla.innerHTML = `📋 Clientes del Asesor <small class="text-muted">(${clientesFiltradosCount}/${totalClientes})</small>`;
+    }
+}
+
+function verDetallesCliente(clienteId) {
+    console.log('👁️ Ver detalles del cliente:', clienteId);
+    // Aquí puedes implementar la lógica para mostrar más detalles del cliente
+    mostrarAlerta(`Ver detalles del cliente ${clienteId}`, 'info');
+}
+
+function abrirModalTransferir(clienteId, nombreCliente, cedulaCliente, asesorActual) {
+    console.log('🔄 Abriendo modal de transferencia para cliente:', clienteId);
+    
+    // Guardar información del cliente para la transferencia
+    window.clienteTransferirId = clienteId;
+    
+    // Actualizar modal de transferencia
+    const nombreElement = document.getElementById('clienteTransferirNombre');
+    const cedulaElement = document.getElementById('clienteTransferirCedula');
+    const asesorElement = document.getElementById('clienteTransferirAsesorActual');
+    
+    if (nombreElement) nombreElement.textContent = nombreCliente;
+    if (cedulaElement) cedulaElement.textContent = cedulaCliente;
+    if (asesorElement) asesorElement.textContent = asesorActual;
+    
+    // Cargar asesores disponibles
+    cargarAsesoresDisponibles();
+    
+    // Mostrar modal
+    const modal = document.getElementById('transferirModal');
+    if (modal) {
+        modal.style.display = 'block';
+        console.log('✅ Modal de transferencia abierto');
+    } else {
+        console.error('❌ Modal de transferencia no encontrado');
+    }
+}
+
+function cerrarModalTransferir() {
+    document.getElementById('transferirModal').style.display = 'none';
+    // Limpiar campos
+    document.getElementById('nuevoAsesor').value = '';
+    document.getElementById('motivoTransferir').value = '';
+}
+
+function limpiarFiltros() {
+    console.log('🧹 Limpiando filtros...');
+    
+    // Limpiar campos de filtro
+    const filterTipificacion = document.getElementById('filterTipificacion');
+    const filterEstado = document.getElementById('filterEstado');
+    const searchCedula = document.getElementById('searchCedula');
+    
+    if (filterTipificacion) filterTipificacion.value = '';
+    if (filterEstado) filterEstado.value = '';
+    if (searchCedula) searchCedula.value = '';
+    
+    // Restaurar todos los clientes
+    clientesFiltrados = [...clientesAsesor];
+    
+    // Mostrar clientes sin filtrar
+    mostrarClientesFiltrados();
+    
+    // Actualizar contador
+    actualizarContadorFiltros();
+    
+    mostrarAlerta('Filtros limpiados correctamente', 'success');
+}
 
 // ===== EVENT LISTENERS =====
 
 document.addEventListener('DOMContentLoaded', function() {
-// Cerrar modales al hacer clic fuera de ellos
-window.onclick = function(event) {
+    console.log('🚀 Coordinador Dashboard inicializado');
+    
+    // Cerrar modales al hacer clic fuera de ellos
+    window.onclick = function(event) {
         if (event.target.classList.contains('modal')) {
             event.target.style.display = 'none';
         }
-}
+    }
+});
 
 // Cerrar modales con ESC
 document.addEventListener('keydown', function(event) {
     if (event.key === 'Escape') {
-            document.querySelectorAll('.modal').forEach(modal => {
-                modal.style.display = 'none';
-            });
+        document.querySelectorAll('.modal').forEach(modal => {
+            modal.style.display = 'none';
+        });
     }
-    });
 });

@@ -86,11 +86,47 @@ switch ($action) {
         $controller->getEstadisticas();
         break;
         
+    case 'update_usuario':
+        verificarSesion('administrador');
+        $controller = new AdminController();
+        $controller->updateUsuario();
+        break;
+        
+    case 'delete_usuario':
+        verificarSesion('administrador');
+        $controller = new AdminController();
+        $controller->deleteUsuario();
+        break;
+        
+    case 'toggle_estado_usuario':
+        verificarSesion('administrador');
+        $controller = new AdminController();
+        $controller->toggleEstadoUsuario();
+        break;
+        
+    case 'get_usuario':
+        verificarSesion('administrador');
+        $controller = new AdminController();
+        $controller->getUsuario();
+        break;
+        
     // ===== DASHBOARD COORDINADOR =====
     case 'coordinador_dashboard':
         verificarSesion('coordinador');
         $controller = new CoordinadorController();
         $controller->dashboard();
+        break;
+        
+    case 'coordinador_gestionar_bases':
+        verificarSesion('coordinador');
+        $controller = new CoordinadorController();
+        $controller->gestionarBasesDatos();
+        break;
+        
+    case 'coordinador_gestion':
+        verificarSesion('coordinador');
+        $controller = new CoordinadorController();
+        $controller->gestion();
         break;
         
     case 'coordinador_cargar_archivo':
@@ -175,6 +211,61 @@ switch ($action) {
         verificarSesion('coordinador');
         $controller = new CoordinadorController();
         $controller->cerrarSesion();
+        break;
+        
+    // ===== ACCIONES DE BASES DE DATOS =====
+    case 'crear_base_datos':
+        verificarSesion('coordinador');
+        $controller = new CoordinadorController();
+        $controller->crearBaseDatos();
+        break;
+        
+    case 'asignar_asesor_base_datos':
+        verificarSesion('coordinador');
+        $controller = new CoordinadorController();
+        $controller->asignarAsesorBaseDatos();
+        break;
+        
+    case 'get_bases_datos':
+        verificarSesion('coordinador');
+        $controller = new CoordinadorController();
+        $controller->getBasesDatos();
+        break;
+        
+    case 'editar_base_datos':
+        verificarSesion('coordinador');
+        $controller = new CoordinadorController();
+        $controller->editarBaseDatos();
+        break;
+        
+    case 'cambiar_estado_base_datos':
+        verificarSesion('coordinador');
+        $controller = new CoordinadorController();
+        $controller->cambiarEstadoBaseDatos();
+        break;
+        
+    case 'coordinador_asignar_asesor_base_datos':
+        verificarSesion('coordinador');
+        $controller = new CoordinadorController();
+        $controller->asignarAsesorBaseDatos();
+        break;
+        
+    case 'coordinador_asignar_multiple_bases':
+        verificarSesion('coordinador');
+        $controller = new CoordinadorController();
+        $controller->asignarMultipleBases();
+        break;
+        
+    case 'coordinador_liberar_asesor_base':
+        verificarSesion('coordinador');
+        $controller = new CoordinadorController();
+        $controller->liberarAsesorBase();
+        break;
+        
+    case 'coordinador_ver_detalles_base':
+        verificarSesion('coordinador');
+        $controller = new CoordinadorController();
+        $controller->verDetallesBase();
         break;
         
     // ===== DASHBOARD ASESOR =====

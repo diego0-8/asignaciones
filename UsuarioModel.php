@@ -150,25 +150,30 @@ class UsuarioModel {
         $params = [];
         
         if (!empty($search)) {
-            $where[] = "(nombre_completo LIKE ? OR usuario LIKE ? OR cedula LIKE ?)";
+            $where[] = "(u.nombre_completo LIKE ? OR u.usuario LIKE ? OR u.cedula LIKE ?)";
             $params[] = "%{$search}%";
             $params[] = "%{$search}%";
             $params[] = "%{$search}%";
         }
         
         if (!empty($rol_filter)) {
-            $where[] = "rol = ?";
+            $where[] = "u.rol = ?";
             $params[] = $rol_filter;
         }
         
         if (!empty($estado_filter)) {
-            $where[] = "estado = ?";
+            $where[] = "u.estado = ?";
             $params[] = $estado_filter;
         }
         
         $whereClause = !empty($where) ? 'WHERE ' . implode(' AND ', $where) : '';
         
-        $sql = "SELECT * FROM usuarios {$whereClause} ORDER BY fecha_creacion DESC LIMIT ? OFFSET ?";
+        $sql = "SELECT u.*, c.nombre_completo as coordinador_nombre 
+                FROM usuarios u 
+                LEFT JOIN usuarios c ON u.coordinador_id = c.id 
+                {$whereClause} 
+                ORDER BY u.fecha_creacion DESC 
+                LIMIT ? OFFSET ?";
         $params[] = $limit;
         $params[] = $offset;
         
@@ -183,25 +188,25 @@ class UsuarioModel {
         $params = [];
         
         if (!empty($search)) {
-            $where[] = "(nombre_completo LIKE ? OR usuario LIKE ? OR cedula LIKE ?)";
+            $where[] = "(u.nombre_completo LIKE ? OR u.usuario LIKE ? OR u.cedula LIKE ?)";
             $params[] = "%{$search}%";
             $params[] = "%{$search}%";
             $params[] = "%{$search}%";
         }
         
         if (!empty($rol_filter)) {
-            $where[] = "rol = ?";
+            $where[] = "u.rol = ?";
             $params[] = $rol_filter;
         }
         
         if (!empty($estado_filter)) {
-            $where[] = "estado = ?";
+            $where[] = "u.estado = ?";
             $params[] = $estado_filter;
         }
         
         $whereClause = !empty($where) ? 'WHERE ' . implode(' AND ', $where) : '';
         
-        $sql = "SELECT COUNT(*) as total FROM usuarios {$whereClause}";
+        $sql = "SELECT COUNT(*) as total FROM usuarios u {$whereClause}";
         $result = $this->db->fetch($sql, $params);
         
         return $result['total'];

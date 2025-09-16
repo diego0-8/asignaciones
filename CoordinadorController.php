@@ -5,12 +5,15 @@
  */
 
 require_once __DIR__ . '/../models/Database.php';
+require_once __DIR__ . '/BaseDatosController.php';
 
 class CoordinadorController {
     private $db;
+    private $baseDatosController;
     
     public function __construct() {
         $this->db = new Database();
+        $this->baseDatosController = new BaseDatosController();
     }
     
     /**
@@ -39,6 +42,22 @@ class CoordinadorController {
     }
     
     /**
+     * Gestión de bases de datos de clientes
+     */
+    public function gestionarBasesDatos() {
+        if (!isset($_SESSION['user_id']) || $_SESSION['user_role'] !== 'coordinador') {
+            header('Location: index.php?action=login');
+            exit;
+        }
+        
+        $coordinadorId = $_SESSION['user_id'];
+        $basesDatos = $this->baseDatosController->getBasesDatos($coordinadorId);
+        $asesores = $this->baseDatosController->getAsesoresDisponibles($coordinadorId);
+        
+        include __DIR__ . '/../views/coordinador_gestionar_bases.php';
+    }
+    
+    /**
      * Cargar archivo de clientes
      */
     public function cargarArchivo() {
@@ -47,11 +66,228 @@ class CoordinadorController {
             exit;
         }
         
-        // Verificar si ya existe una base de datos para este coordinador
         $coordinadorId = $_SESSION['user_id'];
-        $baseExistente = $this->verificarBaseExistente($coordinadorId);
+        $basesDatos = $this->baseDatosController->getBasesDatos($coordinadorId);
+        $asesores = $this->baseDatosController->getAsesoresDisponibles($coordinadorId);
         
         include __DIR__ . '/../views/coordinador_cargar_archivo.php';
+    }
+    
+    /**
+     * Crear nueva base de datos
+     */
+    public function crearBaseDatos() {
+        if (!isset($_SESSION['user_id']) || $_SESSION['user_role'] !== 'coordinador') {
+            $this->jsonResponse(['success' => false, 'error' => 'No autorizado'], 401);
+            return;
+        }
+        
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            $this->jsonResponse(['success' => false, 'error' => 'Método no permitido'], 405);
+            return;
+        }
+        
+        $coordinadorId = $_SESSION['user_id'];
+        $nombreBase = trim($_POST['nombre_base'] ?? '');
+        $descripcion = trim($_POST['descripcion'] ?? '');
+        $asesorId = $_POST['asesor_id'] ?? null;
+        
+        if (empty($nombreBase)) {
+            $this->jsonResponse(['success' => false, 'error' => 'El nombre de la base es obligatorio'], 400);
+            return;
+        }
+        
+        try {
+            // Verificar que el nombre sea único
+            if (!$this->baseDatosController->verificarNombreUnico($nombreBase, $coordinadorId)) {
+                $this->jsonResponse(['success' => false, 'error' => 'Ya existe una base de datos con ese nombre'], 400);
+                return;
+            }
+            
+            // Crear base de datos
+            $data = [
+                'nombre_base' => $nombreBase,
+                'descripcion' => $descripcion,
+                'coordinador_id' => $coordinadorId,
+                'asesor_id' => $asesorId
+            ];
+            
+            $baseId = $this->baseDatosController->crearBaseDatos($data);
+            
+            $this->jsonResponse([
+                'success' => true,
+                'message' => 'Base de datos creada exitosamente',
+                'base_id' => $baseId
+            ]);
+            
+        } catch (Exception $e) {
+            error_log("Error en crearBaseDatos: " . $e->getMessage());
+            $this->jsonResponse(['success' => false, 'error' => 'Error interno del servidor'], 500);
+        }
+    }
+    
+    /**
+     * Asignar asesor a base de datos
+     */
+    public function asignarAsesorBaseDatos() {
+        if (!isset($_SESSION['user_id']) || $_SESSION['user_role'] !== 'coordinador') {
+            $this->jsonResponse(['success' => false, 'error' => 'No autorizado'], 401);
+            return;
+        }
+        
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            $this->jsonResponse(['success' => false, 'error' => 'Método no permitido'], 405);
+            return;
+        }
+        
+        $coordinadorId = $_SESSION['user_id'];
+        $baseDatosId = $_POST['base_datos_id'] ?? null;
+        $asesorId = $_POST['asesor_id'] ?? null;
+        $asignarClientes = $_POST['asignar_clientes'] ?? '0';
+        
+        if (!$baseDatosId) {
+            $this->jsonResponse(['success' => false, 'error' => 'ID de base de datos requerido'], 400);
+            return;
+        }
+        
+        try {
+            if ($asesorId) {
+                // Verificar que la base pertenece al coordinador
+                $base = $this->baseDatosController->getBaseDatosById($baseDatosId, $coordinadorId);
+                if (!$base) {
+                    $this->jsonResponse(['success' => false, 'error' => 'Base de datos no encontrada'], 404);
+                    return;
+                }
+                
+                $this->baseDatosController->asignarAsesor($baseDatosId, $asesorId, $coordinadorId);
+                
+                // Si se solicita, asignar todos los clientes de la base al asesor
+                if ($asignarClientes === '1') {
+                    $this->asignarClientesDeBase($baseDatosId, $asesorId, $coordinadorId);
+                }
+                
+                $message = 'Asesor asignado exitosamente';
+            } else {
+                $this->baseDatosController->liberarAsesor($baseDatosId, $coordinadorId);
+                $message = 'Asesor liberado exitosamente';
+            }
+            
+            $this->jsonResponse([
+                'success' => true,
+                'message' => $message
+            ]);
+            
+        } catch (Exception $e) {
+            error_log("Error en asignarAsesorBaseDatos: " . $e->getMessage());
+            $this->jsonResponse(['success' => false, 'error' => $e->getMessage()], 400);
+        }
+    }
+    
+    /**
+     * Obtener bases de datos del coordinador
+     */
+    public function getBasesDatos() {
+        if (!isset($_SESSION['user_id']) || $_SESSION['user_role'] !== 'coordinador') {
+            $this->jsonResponse(['success' => false, 'error' => 'No autorizado'], 401);
+            return;
+        }
+        
+        $coordinadorId = $_SESSION['user_id'];
+        $basesDatos = $this->baseDatosController->getBasesDatos($coordinadorId);
+        
+        $this->jsonResponse([
+            'success' => true,
+            'bases_datos' => $basesDatos
+        ]);
+    }
+    
+    /**
+     * Editar base de datos
+     */
+    public function editarBaseDatos() {
+        if (!isset($_SESSION['user_id']) || $_SESSION['user_role'] !== 'coordinador') {
+            $this->jsonResponse(['success' => false, 'error' => 'No autorizado'], 401);
+            return;
+        }
+        
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            $this->jsonResponse(['success' => false, 'error' => 'Método no permitido'], 405);
+            return;
+        }
+        
+        $coordinadorId = $_SESSION['user_id'];
+        $baseDatosId = $_POST['base_datos_id'] ?? null;
+        $nombreBase = trim($_POST['nombre_base'] ?? '');
+        $descripcion = trim($_POST['descripcion'] ?? '');
+        
+        if (!$baseDatosId || empty($nombreBase)) {
+            $this->jsonResponse(['success' => false, 'error' => 'Datos requeridos faltantes'], 400);
+            return;
+        }
+        
+        try {
+            // Verificar que el nombre sea único (excluyendo la base actual)
+            if (!$this->baseDatosController->verificarNombreUnico($nombreBase, $coordinadorId, $baseDatosId)) {
+                $this->jsonResponse(['success' => false, 'error' => 'Ya existe una base de datos con ese nombre'], 400);
+                return;
+            }
+            
+            // Actualizar base de datos
+            $data = [
+                'nombre_base' => $nombreBase,
+                'descripcion' => $descripcion
+            ];
+            
+            $this->baseDatosController->actualizarBaseDatos($baseDatosId, $data);
+            
+            $this->jsonResponse([
+                'success' => true,
+                'message' => 'Base de datos actualizada exitosamente'
+            ]);
+            
+        } catch (Exception $e) {
+            error_log("Error en editarBaseDatos: " . $e->getMessage());
+            $this->jsonResponse(['success' => false, 'error' => 'Error interno del servidor'], 500);
+        }
+    }
+    
+    /**
+     * Cambiar estado de base de datos
+     */
+    public function cambiarEstadoBaseDatos() {
+        if (!isset($_SESSION['user_id']) || $_SESSION['user_role'] !== 'coordinador') {
+            $this->jsonResponse(['success' => false, 'error' => 'No autorizado'], 401);
+            return;
+        }
+        
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            $this->jsonResponse(['success' => false, 'error' => 'Método no permitido'], 405);
+            return;
+        }
+        
+        $coordinadorId = $_SESSION['user_id'];
+        $baseDatosId = $_POST['base_datos_id'] ?? null;
+        $estado = $_POST['estado'] ?? null;
+        
+        if (!$baseDatosId || !$estado) {
+            $this->jsonResponse(['success' => false, 'error' => 'Datos requeridos faltantes'], 400);
+            return;
+        }
+        
+        try {
+            $this->baseDatosController->cambiarEstado($baseDatosId, $estado, $coordinadorId);
+            
+            $mensaje = $estado === 'Activa' ? 'Base de datos activada' : 'Base de datos desactivada';
+            
+            $this->jsonResponse([
+                'success' => true,
+                'message' => $mensaje
+            ]);
+            
+        } catch (Exception $e) {
+            error_log("Error en cambiarEstadoBaseDatos: " . $e->getMessage());
+            $this->jsonResponse(['success' => false, 'error' => 'Error interno del servidor'], 500);
+        }
     }
     
     /**
@@ -82,6 +318,9 @@ class CoordinadorController {
         
         $archivo = $_FILES['archivo'];
         $coordinadorId = $_SESSION['user_id'];
+        $baseDatosId = $_POST['base_datos_id'] ?? null;
+        $crearNuevaBase = $_POST['crear_nueva_base'] ?? false;
+        $nombreNuevaBase = trim($_POST['nombre_nueva_base'] ?? '');
         
         // Verificar tipo de archivo
         $extension = strtolower(pathinfo($archivo['name'], PATHINFO_EXTENSION));
@@ -94,6 +333,42 @@ class CoordinadorController {
         if ($archivo['size'] > 500 * 1024 * 1024) {
             $this->jsonResponse(['success' => false, 'error' => 'El archivo es demasiado grande. Máximo 500MB'], 400);
             return;
+        }
+        
+        // Determinar base de datos destino
+        if ($crearNuevaBase) {
+            if (empty($nombreNuevaBase)) {
+                $this->jsonResponse(['success' => false, 'error' => 'El nombre de la nueva base es obligatorio'], 400);
+                return;
+            }
+            
+            // Verificar que el nombre sea único
+            if (!$this->baseDatosController->verificarNombreUnico($nombreNuevaBase, $coordinadorId)) {
+                $this->jsonResponse(['success' => false, 'error' => 'Ya existe una base de datos con ese nombre'], 400);
+                return;
+            }
+            
+            // Crear nueva base de datos
+            $data = [
+                'nombre_base' => $nombreNuevaBase,
+                'descripcion' => 'Creada desde carga de archivo CSV',
+                'coordinador_id' => $coordinadorId,
+                'asesor_id' => null
+            ];
+            
+            $baseDatosId = $this->baseDatosController->crearBaseDatos($data);
+        } else {
+            if (!$baseDatosId) {
+                $this->jsonResponse(['success' => false, 'error' => 'Debe seleccionar una base de datos existente'], 400);
+                return;
+            }
+            
+            // Verificar que la base de datos pertenezca al coordinador
+            $baseDatos = $this->baseDatosController->getBaseDatosById($baseDatosId, $coordinadorId);
+            if (!$baseDatos) {
+                $this->jsonResponse(['success' => false, 'error' => 'Base de datos no encontrada'], 400);
+                return;
+            }
         }
         
         try {
@@ -215,6 +490,7 @@ class CoordinadorController {
                         'cedula' => $cedula,
                         'telefono' => $telefono,
                         'coordinador_id' => $coordinadorId,
+                        'base_datos_id' => $baseDatosId,
                         'estado_gestion' => 'Disponible',
                         'fecha_creacion' => date('Y-m-d H:i:s')
                     ];
@@ -307,10 +583,10 @@ class CoordinadorController {
     private function procesarLoteClientes($batch) {
         if (empty($batch)) return;
         
-        $placeholders = str_repeat('(?, ?, ?, ?, ?, ?),', count($batch));
+        $placeholders = str_repeat('(?, ?, ?, ?, ?, ?, ?),', count($batch));
         $placeholders = rtrim($placeholders, ',');
         
-        $sql = "INSERT INTO clientes (nombre_completo, cedula, telefono, coordinador_id, estado_gestion, fecha_creacion) VALUES $placeholders";
+        $sql = "INSERT INTO clientes (nombre_completo, cedula, telefono, coordinador_id, base_datos_id, estado_gestion, fecha_creacion) VALUES $placeholders";
         
         $valores = [];
         foreach ($batch as $cliente) {
@@ -318,6 +594,7 @@ class CoordinadorController {
             $valores[] = $cliente['cedula'];
             $valores[] = $cliente['telefono'];
             $valores[] = $cliente['coordinador_id'];
+            $valores[] = $cliente['base_datos_id'];
             $valores[] = $cliente['estado_gestion'];
             $valores[] = $cliente['fecha_creacion'];
         }
@@ -1070,6 +1347,7 @@ class CoordinadorController {
                         c.telefono,
                         c.email,
                         c.ciudad,
+                        COALESCE(bd.nombre_base, 'Sin Base de Datos') as base_datos,
                         'gestionado' AS tipo_gestion_export,
                         hg.tipo_contacto,
                         CASE 
@@ -1101,10 +1379,10 @@ class CoordinadorController {
                     FROM historial_gestion hg
                     INNER JOIN usuarios u ON hg.asesor_id = u.id
                     INNER JOIN clientes c ON hg.cliente_id = c.id
+                    LEFT JOIN base_datos_clientes bd ON c.base_datos_id = bd.id
                     WHERE u.coordinador_id = ? 
                       AND u.rol = 'asesor'
                       AND DATE(hg.fecha_gestion) BETWEEN ? AND ?
-                      AND hg.tipo_contacto <> 'no_contactado'
                     ORDER BY hg.fecha_gestion DESC, u.nombre_completo, c.nombre_completo";
             
             $datos = $this->db->fetchAll($sql, [$coordinadorId, $fechaInicio, $fechaFin]);
@@ -1137,6 +1415,7 @@ class CoordinadorController {
                 'Teléfono',
                 'Email',
                 'Ciudad',
+                'Base de Datos',
                 'Tipo de Gestión',
                 'Tipo de Contacto',
                 'Resultado',
@@ -1160,6 +1439,7 @@ class CoordinadorController {
                     $row['telefono'],
                     $row['email'],
                     $row['ciudad'],
+                    $row['base_datos'],
                     $row['tipo_gestion_export'],
                     $row['tipo_contacto'],
                     $row['resultado_export'],
@@ -1182,6 +1462,243 @@ class CoordinadorController {
             error_log("Error en exportarGestionCSV: " . $e->getMessage());
             $this->jsonResponse(['success' => false, 'error' => 'Error interno del servidor'], 500);
         }
+    }
+    
+    /**
+     * Vista de gestión de bases de datos
+     */
+    public function gestion() {
+        if (!isset($_SESSION['user_id']) || $_SESSION['user_role'] !== 'coordinador') {
+            header('Location: index.php?action=login');
+            exit;
+        }
+        
+        $coordinadorId = $_SESSION['user_id'];
+        
+        // Obtener bases de datos del coordinador
+        $basesDatos = $this->baseDatosController->getBasesDatos($coordinadorId);
+        
+        // Obtener asesores disponibles
+        $asesores = $this->getAsesoresDisponibles($coordinadorId);
+        
+        // Calcular estadísticas
+        $basesAsignadas = 0;
+        $basesDisponibles = 0;
+        $totalClientes = 0;
+        
+        foreach ($basesDatos as $base) {
+            if ($base['asesor_id']) {
+                $basesAsignadas++;
+            } else {
+                $basesDisponibles++;
+            }
+            $totalClientes += $base['total_clientes_actual'];
+        }
+        
+        // Incluir la vista
+        include __DIR__ . '/../views/coordinador_gestion.php';
+    }
+    
+    /**
+     * Asignar asesor a múltiples bases de datos
+     */
+    public function asignarMultipleBases() {
+        if (!isset($_SESSION['user_id']) || $_SESSION['user_role'] !== 'coordinador') {
+            $this->jsonResponse(['success' => false, 'error' => 'No autorizado'], 401);
+            return;
+        }
+        
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            $this->jsonResponse(['success' => false, 'error' => 'Método no permitido'], 405);
+            return;
+        }
+        
+        $input = json_decode(file_get_contents('php://input'), true);
+        $coordinadorId = $_SESSION['user_id'];
+        $baseIds = $input['base_ids'] ?? [];
+        $asesorId = $input['asesor_id'] ?? null;
+        $asignarClientes = $input['asignar_clientes'] ?? false;
+        
+        if (empty($baseIds) || !$asesorId) {
+            $this->jsonResponse(['success' => false, 'error' => 'Datos requeridos faltantes'], 400);
+            return;
+        }
+        
+        try {
+            $this->db->beginTransaction();
+            
+            $asignacionesExitosas = 0;
+            $errores = [];
+            
+            foreach ($baseIds as $baseId) {
+                try {
+                    // Verificar que la base pertenece al coordinador
+                    $base = $this->baseDatosController->getBaseDatosById($baseId, $coordinadorId);
+                    if (!$base) {
+                        $errores[] = "Base ID $baseId no encontrada";
+                        continue;
+                    }
+                    
+                    // Asignar asesor a la base
+                    $this->baseDatosController->asignarAsesor($baseId, $asesorId, $coordinadorId);
+                    
+                    // Si se solicita, asignar todos los clientes de la base al asesor
+                    if ($asignarClientes) {
+                        $this->asignarClientesDeBase($baseId, $asesorId, $coordinadorId);
+                    }
+                    
+                    $asignacionesExitosas++;
+                    
+                } catch (Exception $e) {
+                    $errores[] = "Error en base ID $baseId: " . $e->getMessage();
+                }
+            }
+            
+            if ($asignacionesExitosas > 0) {
+                $this->db->commit();
+                $mensaje = "Se asignaron exitosamente $asignacionesExitosas base(s) de datos al asesor.";
+                if (!empty($errores)) {
+                    $mensaje .= " Errores: " . implode(', ', $errores);
+                }
+                
+                $this->jsonResponse([
+                    'success' => true,
+                    'message' => $mensaje,
+                    'asignaciones' => $asignacionesExitosas
+                ]);
+            } else {
+                $this->db->rollback();
+                $this->jsonResponse(['success' => false, 'error' => 'No se pudo asignar ninguna base de datos'], 400);
+            }
+            
+        } catch (Exception $e) {
+            $this->db->rollback();
+            error_log("Error en asignarMultipleBases: " . $e->getMessage());
+            $this->jsonResponse(['success' => false, 'error' => 'Error interno del servidor'], 500);
+        }
+    }
+    
+    /**
+     * Liberar asesor de base de datos
+     */
+    public function liberarAsesorBase() {
+        if (!isset($_SESSION['user_id']) || $_SESSION['user_role'] !== 'coordinador') {
+            $this->jsonResponse(['success' => false, 'error' => 'No autorizado'], 401);
+            return;
+        }
+        
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            $this->jsonResponse(['success' => false, 'error' => 'Método no permitido'], 405);
+            return;
+        }
+        
+        $coordinadorId = $_SESSION['user_id'];
+        $baseDatosId = $_POST['base_datos_id'] ?? null;
+        
+        if (!$baseDatosId) {
+            $this->jsonResponse(['success' => false, 'error' => 'ID de base de datos requerido'], 400);
+            return;
+        }
+        
+        try {
+            // Verificar que la base pertenece al coordinador
+            $base = $this->baseDatosController->getBaseDatosById($baseDatosId, $coordinadorId);
+            if (!$base) {
+                $this->jsonResponse(['success' => false, 'error' => 'Base de datos no encontrada'], 404);
+                return;
+            }
+            
+            // Liberar asesor de la base
+            $this->baseDatosController->liberarAsesor($baseDatosId, $coordinadorId);
+            
+            $this->jsonResponse([
+                'success' => true,
+                'message' => 'Asesor liberado exitosamente'
+            ]);
+            
+        } catch (Exception $e) {
+            error_log("Error en liberarAsesorBase: " . $e->getMessage());
+            $this->jsonResponse(['success' => false, 'error' => $e->getMessage()], 400);
+        }
+    }
+    
+    /**
+     * Ver detalles de una base de datos
+     */
+    public function verDetallesBase() {
+        if (!isset($_SESSION['user_id']) || $_SESSION['user_role'] !== 'coordinador') {
+            $this->jsonResponse(['success' => false, 'error' => 'No autorizado'], 401);
+            return;
+        }
+        
+        $coordinadorId = $_SESSION['user_id'];
+        $baseId = $_GET['base_id'] ?? null;
+        
+        if (!$baseId) {
+            $this->jsonResponse(['success' => false, 'error' => 'ID de base requerido'], 400);
+            return;
+        }
+        
+        try {
+            // Obtener información de la base
+            $base = $this->baseDatosController->getBaseDatosById($baseId, $coordinadorId);
+            if (!$base) {
+                $this->jsonResponse(['success' => false, 'error' => 'Base de datos no encontrada'], 404);
+                return;
+            }
+            
+            // Obtener clientes de la base
+            $sql = "SELECT c.*, u.nombre_completo as asesor_nombre 
+                    FROM clientes c 
+                    LEFT JOIN usuarios u ON c.asesor_id = u.id 
+                    WHERE c.base_datos_id = ? 
+                    ORDER BY c.fecha_creacion DESC";
+            $clientes = $this->db->fetchAll($sql, [$baseId]);
+            
+            $this->jsonResponse([
+                'success' => true,
+                'base' => $base,
+                'clientes' => $clientes
+            ]);
+            
+        } catch (Exception $e) {
+            error_log("Error en verDetallesBase: " . $e->getMessage());
+            $this->jsonResponse(['success' => false, 'error' => 'Error interno del servidor'], 500);
+        }
+    }
+    
+    /**
+     * Asignar clientes de una base a un asesor
+     */
+    private function asignarClientesDeBase($baseId, $asesorId, $coordinadorId) {
+        $sql = "UPDATE clientes 
+                SET asesor_id = ?, estado_gestion = 'Asignado', estado = 'Asignado' 
+                WHERE base_datos_id = ? AND coordinador_id = ?";
+        
+        $result = $this->db->query($sql, [$asesorId, $baseId, $coordinadorId]);
+        
+        if ($result) {
+            // Registrar en historial de asignaciones
+            $sqlHistorial = "INSERT INTO historial_asignaciones (cliente_id, asesor_id, coordinador_id, fecha_asignacion, estado) 
+                            SELECT id, ?, ?, NOW(), 'Asignado' 
+                            FROM clientes 
+                            WHERE base_datos_id = ? AND coordinador_id = ?";
+            $this->db->query($sqlHistorial, [$asesorId, $coordinadorId, $baseId, $coordinadorId]);
+        }
+        
+        return $result;
+    }
+    
+    /**
+     * Obtener asesores disponibles del coordinador
+     */
+    private function getAsesoresDisponibles($coordinadorId) {
+        $sql = "SELECT id, nombre_completo 
+                FROM usuarios 
+                WHERE coordinador_id = ? AND rol = 'asesor' AND estado = 'Activo' 
+                ORDER BY nombre_completo";
+        
+        return $this->db->fetchAll($sql, [$coordinadorId]);
     }
     
     /**
