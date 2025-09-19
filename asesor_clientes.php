@@ -305,7 +305,10 @@
 
         // Función para cargar notificaciones del día
         function cargarNotificaciones() {
-            fetch('index.php?action=asesor_obtener_notificaciones')
+            // Usar la fecha actual del servidor sin zona horaria
+            const hoy = new Date().toISOString().split('T')[0]; // YYYY-MM-DD format
+
+            fetch('index.php?action=asesor_obtener_notificaciones_fecha&fecha=' + encodeURIComponent(hoy))
                 .then(response => response.json())
                 .then(data => {
                     if (data.success) {
@@ -313,24 +316,39 @@
                         if (data.notificaciones.length > 0) {
                             mostrarBadgeNotificaciones();
                         }
+                        console.log('Notificaciones cargadas para hoy:', data.notificaciones.length, 'items');
+                    } else {
+                        console.error('Error en respuesta del servidor:', data.error);
+                        actualizarBadgeNotificaciones(0);
                     }
                 })
                 .catch(error => {
                     console.error('Error al cargar notificaciones:', error);
+                    actualizarBadgeNotificaciones(0);
                 });
         }
 
         // Función para mostrar el modal de notificaciones
         function mostrarNotificaciones() {
-            fetch('index.php?action=asesor_obtener_notificaciones')
+            // Usar la fecha actual del servidor sin zona horaria
+            const hoy = new Date().toISOString().split('T')[0]; // YYYY-MM-DD format
+
+            fetch('index.php?action=asesor_obtener_notificaciones_fecha&fecha=' + encodeURIComponent(hoy))
                 .then(response => response.json())
                 .then(data => {
                     if (data.success) {
                         mostrarModalNotificaciones(data.notificaciones);
+                        console.log('Modal de notificaciones mostrado para hoy:', data.notificaciones.length, 'items');
+                    } else {
+                        console.error('Error al cargar notificaciones para modal:', data.error);
+                        // Mostrar modal vacío
+                        mostrarModalNotificaciones([]);
                     }
                 })
                 .catch(error => {
-                    console.error('Error al cargar notificaciones:', error);
+                    console.error('Error al cargar notificaciones para modal:', error);
+                    // Mostrar modal vacío
+                    mostrarModalNotificaciones([]);
                 });
         }
 
@@ -370,46 +388,72 @@
             modal.style.display = 'flex';
         }
 
-        // Función para formatear fecha
+        // Función para formatear fecha - optimizada para evitar problemas de zona horaria
         function formatearFecha(fechaString) {
             if (!fechaString) return 'No programado';
-            
-            const fecha = new Date(fechaString);
-            const ahora = new Date();
-            const hoy = new Date(ahora.getFullYear(), ahora.getMonth(), ahora.getDate());
-            const manana = new Date(hoy);
-            manana.setDate(hoy.getDate() + 1);
-            
-            // Si la fecha es hoy
-            if (fecha.toDateString() === hoy.toDateString()) {
-                const hora = fecha.toLocaleTimeString('es-ES', {hour: '2-digit', minute: '2-digit'});
-                return `Hoy a las ${hora}`;
+
+            try {
+                // Parse manual para evitar timezone issues
+                const partes = fechaString.split(' ');
+                if (partes.length !== 2) return 'Formato inválido';
+
+                const fechaParte = partes[0]; // YYYY-MM-DD
+                const horaParte = partes[1]; // HH:MM:SS
+
+                const [year, month, day] = fechaParte.split('-').map(Number);
+                const [hour, minute] = horaParte.split(':').map(Number);
+
+                const fecha = new Date(year, month - 1, day, hour, minute);
+
+                // Convertir hora a formato 12h
+                const hora12 = formatearHora12(hour, minute);
+
+                const ahora = new Date();
+                const hoy = new Date(ahora.getFullYear(), ahora.getMonth(), ahora.getDate());
+                const manana = new Date(hoy);
+                manana.setDate(hoy.getDate() + 1);
+
+                // Si la fecha es hoy
+                if (fecha.getFullYear() === hoy.getFullYear() &&
+                    fecha.getMonth() === hoy.getMonth() &&
+                    fecha.getDate() === hoy.getDate()) {
+                    return `Hoy a las ${hora12}`;
+                }
+
+                // Si la fecha es mañana
+                if (fecha.getFullYear() === manana.getFullYear() &&
+                    fecha.getMonth() === manana.getMonth() &&
+                    fecha.getDate() === manana.getDate()) {
+                    return `Mañana a las ${hora12}`;
+                }
+
+                // Si la fecha es pasada
+                if (fecha < ahora) {
+                    return `Vencido - ${day}/${month}/${year} ${hora12}`;
+                }
+
+                // Para fechas futuras
+                const diasSemana = ['dom', 'lun', 'mar', 'mié', 'jue', 'vie', 'sáb'];
+                const diaSemana = diasSemana[fecha.getDay()];
+
+                return `${diaSemana} ${day}/${month}/${year} ${hora12}`;
+            } catch (error) {
+                console.error('Error al formatear fecha:', fechaString, error);
+                return 'Error en formato';
             }
-            
-            // Si la fecha es mañana
-            if (fecha.toDateString() === manana.toDateString()) {
-                const hora = fecha.toLocaleTimeString('es-ES', {hour: '2-digit', minute: '2-digit'});
-                return `Mañana a las ${hora}`;
+        }
+
+        // Función auxiliar para convertir hora 24h a 12h
+        function formatearHora12(hour, minute) {
+            if (hour === 0) {
+                return `12:${minute.toString().padStart(2, '0')} AM`;
+            } else if (hour < 12) {
+                return `${hour}:${minute.toString().padStart(2, '0')} AM`;
+            } else if (hour === 12) {
+                return `12:${minute.toString().padStart(2, '0')} PM`;
+            } else {
+                return `${hour - 12}:${minute.toString().padStart(2, '0')} PM`;
             }
-            
-            // Si la fecha es pasada
-            if (fecha < ahora) {
-                return 'Vencido - ' + fecha.toLocaleDateString('es-ES', {
-                    day: '2-digit',
-                    month: '2-digit',
-                    hour: '2-digit',
-                    minute: '2-digit'
-                });
-            }
-            
-            // Para fechas futuras
-            return fecha.toLocaleDateString('es-ES', {
-                weekday: 'short',
-                day: '2-digit',
-                month: 'short',
-                hour: '2-digit',
-                minute: '2-digit'
-            });
         }
 
         // Función para cerrar el modal de notificaciones

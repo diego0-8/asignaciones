@@ -933,7 +933,7 @@ class AsesorController {
 
     /**
      * Obtener notificaciones de una fecha específica para el asesor
-     * Útil para mostrar notificaciones futuras programadas
+     * Optimizado para mostrar callbacks del día actual sin restricciones de zona horaria
      */
     public function obtenerNotificacionesPorFecha() {
         // Verificar sesión
@@ -941,27 +941,38 @@ class AsesorController {
             $this->jsonResponse(['success' => false, 'error' => 'No autorizado'], 401);
             return;
         }
-        
+
         $asesorId = $_SESSION['user_id'];
+        // Si no se proporciona fecha, usar la fecha actual del servidor (sin zona horaria)
         $fecha = $_GET['fecha'] ?? date('Y-m-d');
-        
+
+        // Log para debugging
+        error_log("=== obtenerNotificacionesPorFecha ===");
+        error_log("Asesor ID: " . $asesorId);
+        error_log("Fecha solicitada: " . $fecha);
+        error_log("Fecha actual del servidor: " . date('Y-m-d H:i:s'));
+
         try {
             // Obtener clientes con tipificación "volver_llamar" para la fecha específica
-            $sql = "SELECT DISTINCT 
+            // Usando DATE() para asegurar comparación sin zona horaria
+            $sql = "SELECT DISTINCT
                         c.id as cliente_id,
                         c.nombre_completo,
                         c.cedula,
                         c.telefono,
                         hg.tipo_gestion,
                         hg.fecha_gestion,
-                        CONCAT(DATE(hg.fecha_proximo_contacto), ' ', hg.hora_proximo_contacto) as proxima_fecha,
+                        hg.fecha_proximo_contacto,
+                        hg.hora_proximo_contacto,
+                        CONCAT(DATE(hg.fecha_proximo_contacto), ' ', TIME(hg.fecha_proximo_contacto)) as proxima_fecha,
                         'Volver a Llamar' as tipificacion_nombre,
-                        DATE(hg.fecha_proximo_contacto) as fecha_programada
+                        DATE(hg.fecha_proximo_contacto) as fecha_programada,
+                        TIME(hg.fecha_proximo_contacto) as hora_programada
                     FROM clientes c
                     INNER JOIN historial_gestion hg ON c.id = hg.cliente_id
-                    WHERE c.asesor_id = ? 
+                    WHERE c.asesor_id = ?
                     AND hg.tipo_gestion = 'volver_llamar'
-                    AND DATE(hg.fecha_proximo_contacto) = ?
+                    AND DATE(hg.fecha_proximo_contacto) = DATE(?)
                     AND hg.fecha_proximo_contacto IS NOT NULL
                     AND hg.hora_proximo_contacto IS NOT NULL
                     AND hg.id = (
@@ -980,19 +991,27 @@ class AsesorController {
                         AND hg3.fecha_gestion > hg.fecha_gestion
                         AND hg3.tipo_gestion != 'volver_llamar'
                     )
-                    ORDER BY hg.fecha_proximo_contacto DESC, hg.hora_proximo_contacto DESC";
-            
+                    ORDER BY TIME(hg.fecha_proximo_contacto) ASC"; // Ordenar por hora ascendente
+
             $notificaciones = $this->db->fetchAll($sql, [$asesorId, $fecha, $asesorId, $asesorId]);
-            
+
+            error_log("Notificaciones encontradas: " . count($notificaciones));
+
+            if (count($notificaciones) > 0) {
+                error_log("Primera notificación: " . json_encode($notificaciones[0]));
+            }
+
             $this->jsonResponse([
                 'success' => true,
                 'notificaciones' => $notificaciones,
-                'fecha_consultada' => $fecha
+                'fecha_consultada' => $fecha,
+                'total' => count($notificaciones)
             ]);
-            
+
         } catch (Exception $e) {
             error_log("Error en obtenerNotificacionesPorFecha: " . $e->getMessage());
-            $this->jsonResponse(['success' => false, 'error' => 'Error interno del servidor'], 500);
+            error_log("Stack trace: " . $e->getTraceAsString());
+            $this->jsonResponse(['success' => false, 'error' => 'Error interno del servidor: ' . $e->getMessage()], 500);
         }
     }
 }

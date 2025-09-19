@@ -136,7 +136,7 @@
                             <!-- Opciones de gestión (se muestran solo si es contactado) -->
                             <div id="opciones_gestion" class="form-group" style="display: none;">
                                 <label for="tipo_gestion">Resultado de la Gestión *</label>
-                                <select name="tipo_gestion" id="tipo_gestion" required onchange="mostrarCamposEspecificos()">
+                                <select name="tipo_gestion" id="tipo_gestion" onchange="mostrarCamposEspecificos()">
                                     <option value="">Selecciona el resultado</option>
                                     <option value="asignacion_cita">Asignación de Cita</option>
                                     <option value="volver_llamar">Volver a Llamar</option>
@@ -148,7 +148,7 @@
                             <!-- Opciones de no contacto (se muestran solo si es no_contactado) -->
                             <div id="opciones_no_contacto" class="form-group" style="display: none;">
                                 <label for="motivo_no_contacto">Motivo de No Contacto *</label>
-                                <select name="motivo_no_contacto" id="motivo_no_contacto" required>
+                                <select name="motivo_no_contacto" id="motivo_no_contacto">
                                     <option value="">Selecciona el motivo</option>
                                     <option value="no_contesta">No Contesta</option>
                                     <option value="buzon_voz">Buzón de Voz</option>
@@ -210,8 +210,8 @@
                                 <div class="form-row">
                                     <div class="form-col">
                                         <label for="fecha_proximo_contacto">Fecha para Llamar *</label>
-                                        <input type="date" name="fecha_proximo_contacto" id="fecha_proximo_contacto" min="<?php echo date('Y-m-d'); ?>" required>
-                                        <small class="form-text">Solo fechas futuras (Lunes a Sábado)</small>
+                                        <input type="date" name="fecha_proximo_contacto" id="fecha_proximo_contacto" required>
+                                        <small class="form-text">Solo fechas futuras (De lunes a sábado)</small>
                                     </div>
                                     <div class="form-col">
                                         <label for="hora_proximo_contacto">Hora para Llamar *</label>

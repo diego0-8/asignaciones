@@ -324,28 +324,31 @@ function validarCamposEspecificos(tipoGestion) {
         case 'volver_llamar':
             const fechaProximo = document.getElementById('fecha_proximo_contacto').value;
             const horaProximo = document.getElementById('hora_proximo_contacto').value;
-            
+
             if (!fechaProximo || !horaProximo) {
                 mostrarError('Para programar una nueva llamada, debes especificar fecha y hora');
                 return false;
             }
-            
-            // Validar que la fecha sea futura
-            const fechaSeleccionada = new Date(fechaProximo);
+
+            // Parse date string manually to avoid timezone issues
+            // Format: YYYY-MM-DD
+            const [year, month, day] = fechaProximo.split('-').map(Number);
+            const fechaSeleccionada = new Date(year, month - 1, day); // month is 0-indexed in JS
+
             const hoy = new Date();
             hoy.setHours(0, 0, 0, 0); // Resetear horas para comparar solo fechas
-            
+
             if (fechaSeleccionada <= hoy) {
                 mostrarError('La fecha debe ser futura (a partir de mañana)');
                 return false;
             }
-            
-            // Validar que sea día laboral (lunes a sábado)
+
+            // Validar que sea día válido (todos los días de la semana permitidos)
             const diaSemana = fechaSeleccionada.getDay(); // 0=domingo, 1=lunes, ..., 6=sábado
-            if (diaSemana === 0) { // Domingo
-                mostrarError('No se pueden programar llamadas los domingos. Selecciona un día de lunes a sábado');
-                return false;
-            }
+            console.log('Fecha seleccionada (validación principal):', fechaProximo, 'Día de la semana:', diaSemana, '(0=Dom, 1=Lun, 2=Mar, 3=Mie, 4=Jue, 5=Vie, 6=Sab)');
+
+            // Todos los días de la semana están permitidos
+            console.log('Día de la semana válido:', diaSemana);
             
             // Validar horario (7:30 AM - 6:00 PM)
             const hora = parseInt(horaProximo.split(':')[0]);
@@ -926,25 +929,31 @@ function configurarValidacionesVolverLlamar() {
  */
 function validarFechaVolverLlamar() {
     const fechaInput = document.getElementById('fecha_proximo_contacto');
-    const fecha = new Date(fechaInput.value);
+    const fechaValue = fechaInput.value;
+
+    // Parse date string manually to avoid timezone issues
+    // Format: YYYY-MM-DD
+    const [year, month, day] = fechaValue.split('-').map(Number);
+    const fecha = new Date(year, month - 1, day); // month is 0-indexed in JS
+
     const hoy = new Date();
     hoy.setHours(0, 0, 0, 0);
-    
+
     // Remover mensajes de error previos
     limpiarMensajesError(fechaInput);
-    
+
     if (fecha <= hoy) {
         mostrarErrorCampo(fechaInput, 'La fecha debe ser futura (a partir de mañana)');
         return false;
     }
-    
-    // Validar que sea día laboral (lunes a sábado)
+
+    // Validar que sea día válido (todos los días de la semana permitidos)
     const diaSemana = fecha.getDay();
-    if (diaSemana === 0) { // Domingo
-        mostrarErrorCampo(fechaInput, 'No se pueden programar llamadas los domingos');
-        return false;
-    }
-    
+    console.log('Fecha seleccionada:', fechaValue, 'Día de la semana:', diaSemana, '(0=Dom, 1=Lun, 2=Mar, 3=Mie, 4=Jue, 5=Vie, 6=Sab)');
+
+    // Todos los días de la semana están permitidos
+    console.log('Día de la semana válido:', diaSemana);
+
     return true;
 }
 
